@@ -76,7 +76,7 @@ In einem Artikel stellt Chandra \cite{chandra_cloud_2020} eine Möglichkeit für
 
 In verteilten Umgebungen wie Clouds, ist eine geeignete Skalierung von Ressourcen wichtig. Eine Unterskalierung kann zu einer vollstaendigen Auslastung der verfuegbaren Ressourcen führen, was zu langsamen Antwortzeiten oder einer großen Anzahl abgelehnter Anfragen führt.  Eine Ueberskalierung wiederum, verursacht nicht ausgelastete Ressourcen, wodurch Zusatzkosten für ungenutzte Rechenleistung entstehen. \\
 
-Die Entscheidung über die Allokierung oder Freigabe von Ressourcen in Clouds, basiert in der Regel auf überwachten oder vorhergesagten Low-Level-Performance-Indikatoren (z.B. Auslastung von Ressourcen wie CPU, Speicher, Netzwerkbandbreite) oder High-Level-Indikatoren (z.B. Antwortzeit, Anfragerate). Weitere Metriken um ein Quality of Service (QoS) zu gewaehrleisten, werden auch in [17] und [18] vorgeschlagen. Zusammenfassend ist das Ziel dieser Arbeiten, bestimmte Werte von ueberwachten Indikatoren innerhalb  festgelegter Thresholds zu halten und bei Abweichung, Skalierungsmechanismen auszuloesen. Eine automatische Skalierung von Ressourcen kann reaktiv durchgefuehrt werden, zum Beispiel als Folge von Änderungen der Arbeitslast, oder proaktiv, d.h. nach Vorhersagen von Änderungen der Arbeitslast. In mehreren Arbeiten werden auch Kombinationen der beiden Ansätze vorgeschlagen \cite{ali-eldin_adaptive_2012}, \cite{gandhi_adaptive_nodate}, \cite{fernandez_autoscaling_2014}, \cite{bouabdallah_use_2016}. Desweiteren gibt es Arbeiten wie \cite{moreno-vozmediano_efficient_2019}, \cite{iqbal_unsupervised_2016} und \cite{bu_reinforcement_2009}, in denen maschinelles Lernen und analytische Verfahren fuer eine praediktive Autoskalierung vorgestellt werden. \\
+Die Entscheidung über die Allokierung oder Freigabe von Ressourcen in Clouds, basiert in der Regel auf überwachten oder vorhergesagten Low-Level-Performance-Indikatoren (z.B. Auslastung von Ressourcen wie CPU, Speicher, Netzwerkbandbreite) oder High-Level-Indikatoren (z.B. Antwortzeit, Anfragerate). Weitere Metriken um ein Quality of Service (QoS) zu gewaehrleisten, werden auch in [17] und [18] vorgeschlagen. Zusammenfassend ist das Ziel dieser Arbeiten, bestimmte Werte von ueberwachten Indikatoren innerhalb  festgelegter Thresholds zu halten und bei Abweichung, Skalierungsmechanismen auszuloesen. Eine automatische Skalierung von Ressourcen kann reaktiv durchgefuehrt werden, zum Beispiel als Folge von Änderungen der Arbeitslast, oder proaktiv, d.h. anhand Vorhersagen von Änderungen der Arbeitslast. In mehreren Arbeiten werden auch Kombinationen der beiden Ansätze vorgeschlagen \cite{ali-eldin_adaptive_2012}, \cite{gandhi_adaptive_nodate}, \cite{fernandez_autoscaling_2014}, \cite{bouabdallah_use_2016}. Desweiteren gibt es Arbeiten wie \cite{moreno-vozmediano_efficient_2019}, \cite{iqbal_unsupervised_2016} und \cite{bu_reinforcement_2009}, in denen maschinelles Lernen und analytische Verfahren fuer eine praediktive Autoskalierung vorgestellt werden. \\
 
 In dieser Arbeit wird eine reaktive Skalierungsstrategie vorgestellt, implementiert und in Abschnitt \ref{skalierungstechnik} im Detail erlaeutert. Verwendet werden vom Administrator festgelegte Regeln in Form von SLOs zur Einaltung bestimmter Thresholds.  \\
 	
@@ -86,18 +86,30 @@ In diesem Abschnitt wird auf die entwickelte Autoscaler-Architektur beschrieben.
 	
 \subsection{Architektur}
 
-asdasd
-
+Die Systemarchitekur des verteilten Autoscalers fuer Cloud-Bursting in Hybrid-Clouds ist in Fig. \ref{systemarchitektur} dargestellt. Abgebildet sind sowohl die interne on-premise, als auch externe Infrastruktur des CSPs. Der Autoscaler selbst besteht auf mehreren Teilanwendungen, die jeweils in einem eigenen Prozess gestartet werden und gemeinsam die automatische Skalierung von lokalen Anwendungen umsetzen.
 	
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=1.0\linewidth,scale=1.0]{images/context.png}
 	\caption{Systemarchitektur des entwickelten Autoscalers}
+	\label{systemarchitektur}
 \end{figure}
 
+Vorraussetzung fuer das automatische Skalieren einer lokal bereitgestellten Anwendung ist, dass diese Metriken zur Laufzeit exportiert und durch ein Monitoring-Tool ueberwacht wird. Ausserdem muss die zu skalierende Anwendung oder ein deploybarer Teil der Anwendung als ausfuehrbarer Container in einer Container-Registry vorliegen. \\
+
+Kernelement der Architektur ist die Control-Plane-Komponente (vgl. \ref{control_plane}), welche in regelmaessigen Intervallen die von einem Administrator festgelegten SLOs gegenueber dem Monitoring-Tool evaluiert und die Allokierung oder Freigabe von Ressourcen berechnet. Ueber eine Webschnittstelle rufen die Agent Komponenten ueber ein Polling-Ansatz regelmaessig den Status ueber zu startende oder zu terminierende Instanzen zu einem Zeitpunkt ab. Im Vergleich zur Control-Plane sind die Agents statuslos und setzen den durch den Autoscaler berechneten Bedarf an Instanzen zu einem Zeitpunkt bei einem CSP um. Fuer jeden CSP zu dem Instanzen bei einer automatischen Skalierung ausgelagert werden sollen, wird genau ein Agent deployed. Weitere CSPs koennen ueber die Implementierung eines Interfaces angebunden werden. Bei jeder Statusveraenderung einer Instanz (vgl. Status) schreibt der Agent diese zurueck an die Control Plane. Zwischen dem aufrufenden Client und der zu skalierenden Anwendung ist ein Proxy geschaltet, der als Loadbalancer agiert. Der Proxy nutzt ebenfalls einen Polling-Ansatz um die Routeninformationen von gestarteten Instanzen bei den CSPs zu erfragen. Anfragen, die den Proxy durchlaufen, werden nun automatisch zwischen lokalen und externen Instanzen einer Anwendung geroutet.
+
 \subsection{Datenmodell}
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=1.0\linewidth,scale=1.0]{images/datamodel.png}
+	\caption{Hier muss was hin}
+\end{figure}
 	
-\subsection{Control Plane}
+\subsection{Control Plane} \label{control_plane}
+
+asd
 	
 \begin{figure}[h]
 	\centering
