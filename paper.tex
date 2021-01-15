@@ -11,6 +11,7 @@
 \usepackage[hyphens]{url}
 \usepackage{ragged2e}
 \usepackage{tabularx}
+\usepackage[ruled,vlined]{algorithm2e}
 
 \setlength{\parindent}{0in}
 % Used for displaying a sample figure. If possible, figure files should
@@ -101,15 +102,20 @@ Kernelement der Architektur ist die Control-Plane-Komponente (vgl. \ref{control_
 
 \subsection{Datenmodell}
 
+Die Entitaeten sind in Fig. \ref{datenmodell} dargestellt. Eine Anwendung besteht aus mehreren Services, wobei ein Service das Element einer automatischen Skalierung durch den Autoscaler sein soll. Diese Services werden in einer Konfigurationsdatei (vgl. \ref{configuration}) als sogenannte \textit{ScrapeTargets} definiert. Ein ScrapeTarget beschreibt einen Service mit einer Metrikabfrage, die in Intervallen an das Monitoring-Tool gesendet und fuer die Berechnung der Skalierung eines Services evaluiert wird. Auch wird beschrieben, wie die zu startende Container-Instanz bei einem CSP parametrisiert (\textit{InstanceSpec}) wird und welche Instanzen in der lokalen Infrastruktur ausgefuehrt werden (\textit{staticSpec}).
+
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=1.0\linewidth,scale=1.0]{images/datamodel.png}
-	\caption{Hier muss was hin}
+	\caption{Entitaeten der Autoscaling-Architectur dargestellt als Baumdiagramm}
+	\label{datenmodell}
 \end{figure}
+
+Einem ScrapeTarget sind mehrere Instanzen (\textit{Instances}) zugeordnet. Eine Instanz beschreibt einen zustandsbehafteten Prozess, in dem die zu skalierende Anwendung oder Teilanwendung ausgefuehrt wird oder ausgefuehrt werden soll. Die Parameterbeschreibung eines Containers  in einem ScrapeTarget,  dient als Schablone fuer das Erstellen von Instanzen die einem Service zugeordnet sind. Instanzen besitzen einen Lebenszyklus, welcher durch die Bearbeitung durch die Agent-Komponente veraendert wird. Diese Statusveraenderungen werden als \textit{Status} in einer Instanz vermerkt.
 	
 \subsection{Control Plane} \label{control_plane}
 
-asd
+Die Control Plane ist das Kernelement der Autoscaling-Architektur. Fuer jeden zu skalierenden Service, wird in zeitlichen Intervallen die festgelegte Metrik von dem Monitoring-Tool abgefragt. Das Ergebnis dieser Abfrage wird in die Berechnung fuer den Bedarf neuer Instanzen einkalkuliert. Anhand des Bedarfes wird der Zustand der Control Plane modifiziert. Die Control Plane bietet eine REST-Api. 
 	
 \begin{figure}[h]
 	\centering
@@ -117,7 +123,7 @@ asd
 	\caption{Hier muss was hin}
 \end{figure}
 
-\subsubsection{Configuration}
+\subsubsection{Konfiguration} \label{configuration}
 	
 \subsubsection{Processor}
 	
@@ -126,12 +132,28 @@ asd
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=0.8\linewidth,scale=0.8]{images/state.png}
-	\caption{Hier muss was hin}
+	\caption{Entitaeten der Autoscaling-Architectur dargestellt als Baumdiagramm}
 \end{figure}
 	
 \subsubsection{Requester}
 	
 \subsection{Agents}
+
+\begin{algorithm}[H]
+	\SetAlgoLined
+	\KwResult{Write here the result }
+	initialization\;
+	\While{While condition}{
+		instructions\;
+		\eIf{condition}{
+			instructions1\;
+			instructions2\;
+		}{
+			instructions3\;
+		}
+	}
+	\caption{How to write algorithms}
+\end{algorithm}
 	
 \subsection{Proxy}
 
@@ -142,6 +164,22 @@ Requires expert knowledge about the dynamics of the ap-plication, including the 
 Many CSPs today offer monitoring services to users (notnecessarily for free) for tracking resource usage. Whilesuch monitoring services provide valuable information,the user still requires expert knowledge about the appli-cation and the performance modeling expertise to con-vert the monitored information into scaling actions.Some CSPs also offer rule-based triggers to help usersscale their applications. These rule-based triggers allowthe users to specify some conditions on the monitoredmetrics which, when met, will trigger a pre-defined scal-ing action.  Even with the help of rule-based triggers,however, the burden of determining the threshold condi-tions for the metrics still rests with the user. For example,in order to use a CPU utilization based trigger for scal-ing, the user must determine the CPU threshold at whichto trigger scale-up and scale-down, and the number ofinstances to scale-up and scale-down
 
 % file:///home/chris/Zotero/storage/LUKLJ8WX/Gandhi%20et%20al.%20-%20Adaptive,%20Model-driven%20Autoscaling%20for%20Cloud%20Appli.pdf
+
+\begin{algorithm}[H]
+	\SetAlgoLined
+	\KwResult{Write here the result }
+	initialization\;
+	\While{While condition}{
+		instructions\;
+		\eIf{condition}{
+			instructions1\;
+			instructions2\;
+		}{
+			instructions3\;
+		}
+	}
+	\caption{How to write algorithms}
+\end{algorithm}
 
 \section{Experimente}
 	
