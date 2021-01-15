@@ -12,6 +12,39 @@
 \usepackage{ragged2e}
 \usepackage{tabularx}
 \usepackage[ruled,vlined]{algorithm2e}
+\usepackage{listings}
+
+% set custom section numbers depth
+\setcounter{secnumdepth}{5}
+\usepackage{listings}
+\usepackage{xcolor}
+
+% define styling for code highlighting
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+	backgroundcolor=\color{backcolour},   
+	commentstyle=\color{codegreen},
+	keywordstyle=\color{magenta},
+	numberstyle=\tiny\color{codegray},
+	stringstyle=\color{codepurple},
+	basicstyle=\ttfamily\footnotesize,
+	breakatwhitespace=false,         
+	breaklines=true,                 
+	captionpos=b,                    
+	keepspaces=true,                 
+	numbers=left,                    
+	numbersep=5pt,                  
+	showspaces=false,                
+	showstringspaces=false,
+	showtabs=false,                  
+	tabsize=2,
+	frame=single
+}
+\lstset{style=mystyle}
 
 \setlength{\parindent}{0in}
 % Used for displaying a sample figure. If possible, figure files should
@@ -92,7 +125,7 @@ Die Systemarchitekur des verteilten Autoscalers fuer Cloud-Bursting in Hybrid-Cl
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=1.0\linewidth,scale=1.0]{images/context.png}
-	\caption{Systemarchitektur des entwickelten Autoscalers}
+	\caption{Systemarchitektur und Kontextdarstellung der Autoscaling-Architektur}
 	\label{systemarchitektur}
 \end{figure}
 
@@ -107,23 +140,46 @@ Die Entitaeten sind in Fig. \ref{datenmodell} dargestellt. Eine Anwendung besteh
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=1.0\linewidth,scale=1.0]{images/datamodel.png}
-	\caption{Entitaeten der Autoscaling-Architectur dargestellt als Baumdiagramm}
+	\caption{Entitaeten der Autoscaling-Architektur, dargestellt als Baumdiagramm}
 	\label{datenmodell}
 \end{figure}
 
-Einem ScrapeTarget sind mehrere Instanzen (\textit{Instances}) zugeordnet. Eine Instanz beschreibt einen zustandsbehafteten Prozess, in dem die zu skalierende Anwendung oder Teilanwendung ausgefuehrt wird oder ausgefuehrt werden soll. Die Parameterbeschreibung eines Containers  in einem ScrapeTarget,  dient als Schablone fuer das Erstellen von Instanzen die einem Service zugeordnet sind. Instanzen besitzen einen Lebenszyklus, welcher durch die Bearbeitung durch die Agent-Komponente veraendert wird. Diese Statusveraenderungen werden als \textit{Status} in einer Instanz vermerkt.
+Einem Service (\textit{ScrapeTarget}) sind mehrere Instanzen (\textit{Instances}) zugeordnet. Eine Instanz beschreibt einen zustandsbehafteten Prozess, in dem die zu skalierende Anwendung oder Teilanwendung ausgefuehrt wird oder ausgefuehrt werden soll. Die Parameterbeschreibung eines Containers  in einem ScrapeTarget,  dient als Schablone fuer das Erstellen von Instanzen die einem Service zugeordnet sind. Instanzen besitzen einen Lebenszyklus, welcher durch die Bearbeitung durch die Agent-Komponente veraendert wird. Diese Statusveraenderungen werden als \textit{Status} in einer Instanz vermerkt.
 	
 \subsection{Control Plane} \label{control_plane}
 
-Die Control Plane ist das Kernelement der Autoscaling-Architektur. Fuer jeden zu skalierenden Service, wird in zeitlichen Intervallen die festgelegte Metrik von dem Monitoring-Tool abgefragt. Das Ergebnis dieser Abfrage wird in die Berechnung fuer den Bedarf neuer Instanzen einkalkuliert. Anhand des Bedarfes wird der Zustand der Control Plane modifiziert. Die Control Plane bietet eine REST-Api. 
+Die Control Plane ist das Kernelement der Autoscaling-Architektur. Fuer jeden zu skalierenden Service, wird in zeitlichen Intervallen die festgelegte Metrik von dem Monitoring-Tool abgefragt. Das Ergebnis dieser Abfrage wird in die Berechnung fuer den Bedarf neuer Instanzen einkalkuliert. Anhand des Bedarfes wird der Zustand der Control Plane adaptiert. Ueber eine RESTful Webschnittstelle koennen andere Komponenten wie der Proxy und die Agents diesen Zustand abrufen und modifizieren, beispielsweise wenn sich der Status einer Instanz veraendert hat.
 	
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=1.0\linewidth,scale=1.0]{images/autoscaler.png}
-	\caption{Hier muss was hin}
+	\caption{Komponentendiagramm der Control-Plane Komponente}
 \end{figure}
+ 
+In der hier vorgestellten Implementierung wird Prometheus\footnote{https://github.com/prometheus} als Monitoring-Tool verwendet.  Prometheus zeichnet Echtzeitmetriken in einer Zeitreihendatenbank auf, ueber Webaufrufe von Anwendungenen abgefragt werden. Ausserdem bietet Prometheus eine funktionale Abfragesprache namens PromQL (Prometheus Query Language) an, mit der Clients Zeitreihendaten in Echtzeit selektieren und aggregieren koennen. Das Ergebnis eines Ausdrucks wird von der Control Plane in zeitlichen Intervallen ueber eine Webschnittstelle von Prometheus konsumiert. \\
+
+Als Datenbank wird die in Go geschriebene BoltDB\footnote{https://github.com/etcd-io/bbolt} als einfacher, schneller und zuverlässiger Key-Value Store verwendet. Ueber eine Adapter-Komponente (\textit{StateProvider}) und ein definiertes Interface lassen sich jedoch weitere Datenbanken anbinden.
 
 \subsubsection{Konfiguration} \label{configuration}
+
+asd
+
+\begin{lstlisting}[caption={Ein Beispiel fuer eine \textbf{cloudburst.yaml} Datei. Definiert wird ein Service mit einer Abfrage formuliert in PromQL, einer Angabe der Parameter fuer zu startende Container-Instanzen (\textit{spec}) und eine Liste von lokal erreichbaren Endpunkten (\textit{static})},captionpos=b]
+prometheus_url: http://localhost:9090
+targets:
+	- name: bubblesort-service
+		path: /bubblesort
+		description: requests amount greater than 15 rps
+		query: |
+		(sum(rate(example_sorting_requests_total[30s])) / 15)
+		spec:
+			container:
+				name: "bubblesort-svc"
+				image: cbrgm/example-app:latest
+		static:
+			endpoints:
+				- http://localhost:9997
+\end{lstlisting}
 	
 \subsubsection{Processor}
 	
