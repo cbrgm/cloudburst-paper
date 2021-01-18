@@ -18,6 +18,7 @@
 \setcounter{secnumdepth}{5}
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{amsmath}
 
 % define styling for code highlighting
 \definecolor{codegreen}{rgb}{0,0.6,0}
@@ -139,32 +140,40 @@ Die Entitaeten sind in Fig. \ref{datenmodell} dargestellt. Eine Anwendung besteh
 
 \begin{figure}[h]
 	\centering
-	\includegraphics[width=1.0\linewidth,scale=1.0]{images/datamodel.png}
+	\includegraphics[width=1.0\linewidth,scale=0.8]{images/datamodel.png}
 	\caption{Entitaeten der Autoscaling-Architektur, dargestellt als Baumdiagramm}
 	\label{datenmodell}
 \end{figure}
 
-Einem Service (\textit{ScrapeTarget}) sind mehrere Instanzen (\textit{Instances}) zugeordnet. Eine Instanz beschreibt einen zustandsbehafteten Prozess, in dem die zu skalierende Anwendung oder Teilanwendung ausgefuehrt wird oder ausgefuehrt werden soll. Die Parameterbeschreibung eines Containers  in einem ScrapeTarget,  dient als Schablone fuer das Erstellen von Instanzen die einem Service zugeordnet sind. Instanzen besitzen einen Lebenszyklus, welcher durch die Bearbeitung durch die Agent-Komponente veraendert wird. Diese Statusveraenderungen werden als \textit{Status} in einer Instanz vermerkt.
+Einem Service (\textit{ScrapeTarget}) sind mehrere Instanzen (\textit{Instances}) zugeordnet. Eine Instanz beschreibt einen zustandsbehafteten Prozess, in dem die zu skalierende Anwendung oder Teilanwendung ausgefuehrt wird oder ausgefuehrt werden soll. Die Parameterbeschreibung eines Containers  in einem ScrapeTarget,  dient als Schablone fuer das Erstellen von Instanzen die einem Service zugeordnet sind.
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.8\linewidth,scale=0.8]{images/state.png}
+	\caption{Zustandsdiagramm fuer Instanzen}
+\end{figure}
+
+Instanzen besitzen einen Lebenszyklus, welcher durch die Bearbeitung durch die Agent-Komponente veraendert wird. Diese Statusveraenderungen werden als \textit{Status} in einer Instanz vermerkt.
 	
 \subsection{Control Plane} \label{control_plane}
 
-Die Control Plane ist das Kernelement der Autoscaling-Architektur. Fuer jeden zu skalierenden Service, wird in zeitlichen Intervallen die festgelegte Metrik von dem Monitoring-Tool abgefragt. Das Ergebnis dieser Abfrage wird in die Berechnung fuer den Bedarf neuer Instanzen einkalkuliert. Anhand des Bedarfes wird der Zustand der Control Plane adaptiert. Ueber eine RESTful Webschnittstelle koennen andere Komponenten wie der Proxy und die Agents diesen Zustand abrufen und modifizieren, beispielsweise wenn sich der Status einer Instanz veraendert hat.
-	
+Die Control Plane ist das Kernelement der Autoscaling-Architektur. Fuer jeden zu skalierenden Service, wird in zeitlichen Intervallen die festgelegte Metrik von dem Monitoring-Tool abgefragt. Das Ergebnis dieser Abfrage wird in die Berechnung fuer den Bedarf neuer Instanzen einkalkuliert. Anhand des Bedarfes wird der Zustand der Control Plane modifiziert. Ueber eine RESTful Webschnittstelle koennen andere Komponenten wie der Proxy und die Agents diesen Zustand abrufen und veraendern, beispielsweise wenn der Status einer Instanz aktualisiert wurde.
+
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=1.0\linewidth,scale=1.0]{images/autoscaler.png}
 	\caption{Komponentendiagramm der Control-Plane Komponente}
 \end{figure}
- 
+
 In der hier vorgestellten Implementierung wird Prometheus\footnote{https://github.com/prometheus} als Monitoring-Tool verwendet.  Prometheus zeichnet Echtzeitmetriken in einer Zeitreihendatenbank auf, ueber Webaufrufe von Anwendungenen abgefragt werden. Ausserdem bietet Prometheus eine funktionale Abfragesprache namens PromQL (Prometheus Query Language) an, mit der Clients Zeitreihendaten in Echtzeit selektieren und aggregieren koennen. Das Ergebnis eines Ausdrucks wird von der Control Plane in zeitlichen Intervallen ueber eine Webschnittstelle von Prometheus konsumiert. \\
 
 Als Datenbank wird die in Go geschriebene BoltDB\footnote{https://github.com/etcd-io/bbolt} als einfacher, schneller und zuverlässiger Key-Value Store verwendet. Ueber eine Adapter-Komponente (\textit{StateProvider}) und ein definiertes Interface lassen sich jedoch weitere Datenbanken anbinden.
 
-\subsubsection{Konfiguration} \label{configuration}
+\subsubsection{Konfiguration} \label{configuration} \hfill\\
 
-asd
+Die Autoscaling-Architektur muss sich auf beliebige containerisierte Anwendungen anwenden lassen. Auch muessen SLOs und fuer die automatische Skalierung genutzte Metriken flexibel und zentral konfigurierbar sein. Die Architektur verwendet dafuer eine externes cloudburst.yaml Konfigurationsdatei. Ein Beispiel fuer eine cloudburst.yaml Datei ist in Abbildung \ref{cloudburst_config} dargestellt. Die .yaml Dateierweiterung nimmt bereits vorweg, dass es sich um eine in YAML strukturierte Textdatei handelt, die einem bestimmten Beshreibungsschema folgt. \\
 
-\begin{lstlisting}[caption={Ein Beispiel fuer eine \textbf{cloudburst.yaml} Datei. Definiert wird ein Service mit einer Abfrage formuliert in PromQL, einer Angabe der Parameter fuer zu startende Container-Instanzen (\textit{spec}) und eine Liste von lokal erreichbaren Endpunkten (\textit{static})},captionpos=b]
+\begin{lstlisting}[label={cloudburst_config}, caption={Ein Beispiel fuer eine \textbf{cloudburst.yaml} Datei. Definiert wird ein Service mit einer Abfrage formuliert in PromQL, einer Angabe der Parameter fuer zu startende Container-Instanzen (\textit{spec}) und eine Liste von lokal erreichbaren Endpunkten (\textit{static})},captionpos=b]
 prometheus_url: http://localhost:9090
 targets:
 	- name: bubblesort-service
@@ -180,16 +189,34 @@ targets:
 			endpoints:
 				- http://localhost:9997
 \end{lstlisting}
-	
-\subsubsection{Processor}
-	
-\subsubsection{Autoscaler}
 
-\begin{figure}[h]
-	\centering
-	\includegraphics[width=0.8\linewidth,scale=0.8]{images/state.png}
-	\caption{Entitaeten der Autoscaling-Architectur dargestellt als Baumdiagramm}
-\end{figure}
+Auf oberster Ebene wird die Adresse der Prometheus-Instanz definiert, von welcher Metriken ueber zu skalierende Services abgerufen werden. Darauf folgt eine Liste an Targets, wobei ein Target mit einem Service einer Anwendung gleichzusetzen ist. Ein Service wird definiert durch einen einzigartigen Namen, einem Pfad unter dem der Service durch den Proxy erreichbar ist und einer in PromQL formulierten Metrikabfrage. Ausserdem wird definiert, wie der Container einer neu gestarteten Instanz parametrisiert werden soll und welche Endpunkte einer Anwendung lokal erreichbar sind.
+
+
+
+\subsubsection{Processor} \hfill\\
+
+Die Prozessor-Komponente der Control-Plane ist verantwortlich fuer das Abfragen der Metrikwerte und fuer das Berechnen der Allokierung oder Freigabe von Ressourcen fuer die in der Konfigurationsdatei definierten Services. Die Berechnung wird hierbei delegiert an die Autoscaler-Komponente und das Allokieren und Freigeben wiederum wird von der Requester-Komponente uebernommen.
+	
+\subsubsection{Autoscaler} \hfill\\
+
+Die Autoscaler-Komponente berechnet die Allokierung oder Freigabe von Ressourcen. Bei jedem Evaluationsintervall $i$, wird auf Basis des Ergebnisses der zu einem Service zugehoerigen Metrikabfrage $q_{i}$ und dem Zustand der Control-Plane $S_{i}$ zu einem bestimmten Zeitpunkt $t_{i}$ ein Bedarf an Ressourcen $\Delta _{i}$ berechnet . Der Zustand $S_{i}$ ist definiert als
+
+\begin{gather*}
+	S_{i}=\left( I_{(in,r)_{i}}, I_{(ex,r)_{i}}, I_{(ex,p)_{i}},  I_{(ex,md)_{i}} , q_{i} \right)
+\end{gather*}
+
+wobei
+
+	$I_{(in,r)}$ = Instanzen \textit{intern} mit Zustand \textit{Running} \\
+	$I_{(ex,r)}$ = Instanzen \textit{extern} mit Zustand \textit{Running} \\
+	$I_{(ex,p)}$ = Instanzen \textit{extern} mit Zustand \textit{Pending} \\
+	$I_{(ex,md)}$ = Instanzen \textit{extern} mit markierter Loeschung \\
+	$q$ = Ergebnis einer Metrikabfrage
+	
+sowie der Bewertungsfunktion  $B$ fuer die Zustand $S_{i}$. $\Delta _{i}$ berechnet sich aus dem Zustand $S_{i}$ und der Bewertungsfunktion $B(S_{i})$. Die Bewertungsfunktion ergibt sich aus den fuer einen zu skalierenden Service festgelegeten Low-Level-Performance-Indikatoren oder High-Level-Performance-Indikatoren. \\
+
+Die Variablen des Zustandvektors $S_{i}$ werden fuer interne Ressourcen aus den Angaben in der Konfigurationsdatei und fuer externe Ressourcen anhand des Status der Instanzen zur Laufzeit ermittelt. Die Metrikabfrage $q$ wird ebenfalls in der Konfigurationsdatei (vgl. \ref{configuration}) definiert. Die Berechnung von $\Delta _{i}$ der in dieser Arbeit vorgestellten Architektur unter Verwendung der beschriebenen Variablen wird in Abschnitt bla dargestellt. 
 	
 \subsubsection{Requester}
 	
