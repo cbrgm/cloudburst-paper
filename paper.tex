@@ -214,31 +214,116 @@ wobei
 	$I_{(ex,md)}$ = Instanzen \textit{extern} mit markierter Loeschung \\
 	$q$ = Ergebnis einer Metrikabfrage
 	
-sowie der Bewertungsfunktion  $B$ fuer die Zustand $S_{i}$. $\Delta _{i}$ berechnet sich aus dem Zustand $S_{i}$ und der Bewertungsfunktion $B(S_{i})$. Die Bewertungsfunktion ergibt sich aus den fuer einen zu skalierenden Service festgelegeten Low-Level-Performance-Indikatoren oder High-Level-Performance-Indikatoren. \\
+sowie der Bewertungsfunktion  $B$ fuer die Zustand $S_{i}$. \\
+
+$\Delta _{i}$ berechnet sich aus dem Zustand $S_{i}$ und der Bewertungsfunktion $B(S_{i})$. Die Bewertungsfunktion ergibt sich aus den fuer einen zu skalierenden Service festgelegeten Low-Level-Performance-Indikatoren oder High-Level-Performance-Indikatoren. \\
 
 Die Variablen des Zustandvektors $S_{i}$ werden fuer interne Ressourcen aus den Angaben in der Konfigurationsdatei und fuer externe Ressourcen anhand des Status der Instanzen zur Laufzeit ermittelt. Die Metrikabfrage $q$ wird ebenfalls in der Konfigurationsdatei (vgl. \ref{configuration}) definiert. Die Berechnung von $\Delta _{i}$ der in dieser Arbeit vorgestellten Architektur unter Verwendung der beschriebenen Variablen wird in Abschnitt bla dargestellt. 
 	
-\subsubsection{Requester}
-	
-\subsection{Agents}
+\subsubsection{Requester}  \hfill\\
+
+Die Requester-Komponente ist fuer die Veraenderung des Zustandes der Control-Plane verantwortlich. Anhand des berechneten Bedarfes durch die Autoscaler-Komponente, werden Datenstrukturen von Instanzen erzeugt oder bestehende Datenstrukturen zur Terminierung durch die Agents markiert.
 
 \begin{algorithm}[H]
-	\SetAlgoLined
-	\KwResult{Write here the result }
-	initialization\;
-	\While{While condition}{
-		instructions\;
-		\eIf{condition}{
-			instructions1\;
-			instructions2\;
-		}{
-			instructions3\;
+	\DontPrintSemicolon
+	\KwIn{demand calculation result $d$}
+	\KwData{list of instances $li$}
+	 \If{$d$ == 0}
+	{
+		get all \textit{pending} instances $i_{p}$ from $li$ \;
+		remove $i_{p}$ from $li$ \;
+	}
+	
+	\texttt{\\}
+	\ElseIf{$d$ \textgreater 0}
+	{
+		get all \textit{pending} instances $i_{p}$ from $li$ \;
+		set $d$ as $d - length(i_{p})$ \;
+		
+		\If{$d$ \textgreater 0}
+		{
+			
+			\While{length($i_{p}$) \textless $d$}
+			{
+				add new \textit{pending} instance to  $i_{p}$
+			}
+			
+		}
+	
+		\If{$d$ \textless 0}
+		{
+			remove $|d|$ \textit{pending} instances $i_{p}$ from $li$
 		}
 	}
-	\caption{How to write algorithms}
+	
+	\texttt{\\}
+	\ElseIf{$d$ \textless 0}
+	{
+		get all \textit{pending} instances $i_{p}$ from $li$ \;
+		remove $i_{p}$ from $li$ \;
+		get all \textit{running} $\wedge$ \textit{non-terminating} instances $i_{r}$ from $li$ \;
+		\If{$|d|$ \textgreater= 0}
+		{
+			set $i_{r}$ as \textit{terminating}
+		}
+		\Else 
+		{
+			set $|d|$ instances from $i_{r}$ as \textit{terminating}
+		}
+	}
+	
+	\caption{resource provisioning based on instance state}
 \end{algorithm}
+
+Die Funktionsweise des Requesters ist in Abbildung bla dargestellt. In Versuchen wurde festgestellt, dass bei fast gleichbleibender Lastverhalten, Instanzen gestartet und gestoppt wurden. Diesem wird entgegengewirkt durch die Einfuehrung eines Thresholds, ab dem die Steuerung der Provisionierung reagiert. Dadurch  wird die Steuerung  traeger und somit unempfindlicher gegenueber Schwankungen in Ergebnissen de Messintervalle. \\
+
+
+\begin{algorithm}[H]
+	\DontPrintSemicolon
+	\KwIn{demand calculation result $d$, threshold $t$}
+	\KwOut{demand calculation result $d$}
+	\If{$d >= t_{min} \wedge d <= t_{max}$}
+	{
+		return 0
+	}
+	
+	\caption{threshold calculation}
+\end{algorithm}
+
+\subsection{Agents}
+
+Die Agents sind verantwortlich fuer das Allokieren und Freigeben von Ressourcen bei einem CSP gemaess des Zustands der Control-Plane. Die Agents sind zustandslos und fuehren in festgelegten Intervallen die in Abbildung bla vorgestellte Routine aus. \\
+
+\begin{algorithm}[H]
+	\DontPrintSemicolon
+	\SetAlgoLined
+	agent initialization\;
+	\While{running}{
+		query scrapeTargets $S$ from control plane \;
+		\ForEach {$s \in \mathcal S $}
+		{
+			query instances $I$ for $s$ from control plane \;
+			get all \textit{pending} $\wedge$ \textit{terminating} instances $i_{p}, i_{t} \in I$ \;
+			
+		}
+		set pending, marked as terminating to progress
+		
+		terminate instances
+		create instances
+		
+		write status
+		
+	}
+	\caption{agent resource provisioning routine}
+\end{algorithm}
+
+Fuer jeden genutzten CSP wird genau ein Agent gestartet. Ueber ein definiertes Interface werden plattformspezifische Schnittstellen zur Provisionierung von Ressourcen bei dem CSP angebunden. Ein Agent kann auf der eigenen lokalen Infrastruktur, oder aber direkt auf der Plattform des CSP ausgefuehrt werden.
 	
 \subsection{Proxy}
+
+Damit die Anfragen eines Klienten zwischen laufenden Instanzen auf der lokalen Infrastruktur und provisionierten Instanzen bei einem CSP verteilt werden koennen, wird ein Proxy in Form eines Loadbalancers zwischen der zu skalierenden Anwendung und den Klienten platziert. \\
+
+Die Proxy-Komponente fragt in Intervallen die Control-Plane nach aktiven Instanzen ab, um anschliessend die aktiven Endpunkte fuer die Lastverteilung zu konfigurieren. Die vorgestellte Architektur verwendet als Loadbalancer das in Go geschriebene Open-Source Projekt Skipper von der Firma Zalando. ergaenzt um eine eigene DataProvider Implementierung, um aktive Instanzen von der Control-Plane-Komponente abzufragen und in eine Routenkonfiguration fuer Skipper zu uebersetzen.
 
 \subsection{Skalierungstechnik} \label{skalierungstechnik}
 
@@ -247,22 +332,6 @@ Requires expert knowledge about the dynamics of the ap-plication, including the 
 Many CSPs today offer monitoring services to users (notnecessarily for free) for tracking resource usage. Whilesuch monitoring services provide valuable information,the user still requires expert knowledge about the appli-cation and the performance modeling expertise to con-vert the monitored information into scaling actions.Some CSPs also offer rule-based triggers to help usersscale their applications. These rule-based triggers allowthe users to specify some conditions on the monitoredmetrics which, when met, will trigger a pre-defined scal-ing action.  Even with the help of rule-based triggers,however, the burden of determining the threshold condi-tions for the metrics still rests with the user. For example,in order to use a CPU utilization based trigger for scal-ing, the user must determine the CPU threshold at whichto trigger scale-up and scale-down, and the number ofinstances to scale-up and scale-down
 
 % file:///home/chris/Zotero/storage/LUKLJ8WX/Gandhi%20et%20al.%20-%20Adaptive,%20Model-driven%20Autoscaling%20for%20Cloud%20Appli.pdf
-
-\begin{algorithm}[H]
-	\SetAlgoLined
-	\KwResult{Write here the result }
-	initialization\;
-	\While{While condition}{
-		instructions\;
-		\eIf{condition}{
-			instructions1\;
-			instructions2\;
-		}{
-			instructions3\;
-		}
-	}
-	\caption{How to write algorithms}
-\end{algorithm}
 
 \section{Experimente}
 	
