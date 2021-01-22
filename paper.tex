@@ -227,18 +227,18 @@ Die Requester-Komponente ist fuer die Veraenderung des Zustandes der Control-Pla
 \begin{algorithm}[H]
 	\DontPrintSemicolon
 	\KwIn{demand calculation result $d$}
-	\KwData{list of instances $li$}
+	\KwData{list of instances $I$}
 	 \If{$d$ == 0}
 	{
-		get all \textit{pending} instances $i_{p}$ from $li$ \;
-		remove $i_{p}$ from $li$ \;
+		get list of \textit{pending} instances $i_{p} \subseteq I$ \;
+		set $I = I \setminus i_{p}$ \;
 	}
 	
 	\texttt{\\}
 	\ElseIf{$d$ \textgreater 0}
 	{
-		get all \textit{pending} instances $i_{p}$ from $li$ \;
-		set $d$ as $d - length(i_{p})$ \;
+		get list of \textit{pending} instances $i_{p} \subseteq I$ \;
+		set $d = d - length(i_{p})$ \;
 		
 		\If{$d$ \textgreater 0}
 		{
@@ -252,23 +252,23 @@ Die Requester-Komponente ist fuer die Veraenderung des Zustandes der Control-Pla
 	
 		\If{$d$ \textless 0}
 		{
-			remove $|d|$ \textit{pending} instances $i_{p}$ from $li$
+			remove $|d|$ \textit{pending} instances $i_{p} \in I$
 		}
 	}
 	
 	\texttt{\\}
 	\ElseIf{$d$ \textless 0}
 	{
-		get all \textit{pending} instances $i_{p}$ from $li$ \;
-		remove $i_{p}$ from $li$ \;
-		get all \textit{running} $\wedge$ \textit{non-terminating} instances $i_{r}$ from $li$ \;
+		get list of \textit{pending} instances $i_{p} \subseteq I$ \;
+		set $I = I \setminus i_{p}$ \;
+		get list of \textit{running} $\wedge$ \textit{not active} instances $i_{r} \subseteq I$ \;
 		\If{$|d|$ \textgreater= 0}
 		{
-			set $i_{r}$ as \textit{terminating}
+			mark all $i \in i_{r}$ as \textit{not active}
 		}
 		\Else 
 		{
-			set $|d|$ instances from $i_{r}$ as \textit{terminating}
+			mark $|d|$ instances from $i_{r}$ as \textit{not active}
 		}
 	}
 	
@@ -286,6 +286,7 @@ Die Funktionsweise des Requesters ist in Abbildung bla dargestellt. In Versuchen
 	{
 		return 0
 	}
+	return $d$
 	
 	\caption{threshold calculation}
 \end{algorithm}
@@ -296,22 +297,35 @@ Die Agents sind verantwortlich fuer das Allokieren und Freigeben von Ressourcen 
 
 \begin{algorithm}[H]
 	\DontPrintSemicolon
-	\SetAlgoLined
 	agent initialization\;
 	\While{running}{
-		query scrapeTargets $S$ from control plane \;
+		query list of scrapeTargets $S$ from control plane \;
 		\ForEach {$s \in \mathcal S $}
 		{
-			query instances $I$ for $s$ from control plane \;
-			get all \textit{pending} $\wedge$ \textit{terminating} instances $i_{p}, i_{t} \in I$ \;
-			
+			query list of instances $I$ for $s$ from control plane \;
+			get list of  \textit{pending} instances $i_{p} \subseteq I$ \;
+			get list of  \textit{not active} instances $ i_{t} \subseteq I$ \;
+			\ForEach {$i \in i_{p} \cup i_{t}$}
+			{
+				set status of $i$ as \textit{progress}
+			}
+		
+			update status of {$i \in i_{p} \cup i_{t}$} in control plane \;
+			\ForEach {$i \in i_{p}$}
+			{
+				provision instance at  CSP \;
+				\If{success}{set status of $i$ as \textit{running}}
+				\Else{set status of $i$ as \textit{failure}}
+			}
+			\ForEach {$i \in i_{t}$} {
+				terminate instance at CSP \;
+				set status of $i$ as \textit{terminated}
+			}
+			update status of {$i \in i_{p} \cup i_{t}$} in control plane \;
 		}
-		set pending, marked as terminating to progress
+	
 		
-		terminate instances
-		create instances
 		
-		write status
 		
 	}
 	\caption{agent resource provisioning routine}
@@ -334,6 +348,43 @@ Many CSPs today offer monitoring services to users (notnecessarily for free) for
 % file:///home/chris/Zotero/storage/LUKLJ8WX/Gandhi%20et%20al.%20-%20Adaptive,%20Model-driven%20Autoscaling%20for%20Cloud%20Appli.pdf
 
 \section{Experimente}
+
+In diesem Abschnitt wird erlaeutert, wie die Autoscaling-Architektur eine containerisierte Anwendung unter verschiedenen Lastverlaeufgen skalieren kann. Hierzu wurde eine Beispielanwendung implementiert und die automatische Skalierung mit unterschiedlichen Anfrageszenarien getestet. Der Testaufbau, die Durchfuehrung und die Ergebnisse werden im Folgendem detailiert beschrieben.
+
+\subsection{Testumgebung}
+
+Die Control-Plane, der Agent, der Proxy und eine zu skalierende Beispielanwendung, welche in bla genauer beschrieben wird, wurden auf einer Testinstanz der Infrastruktur der HAW Hamburg in Containern ausgefuehrt. Die Instanz besitzt einen E5-2670-Prozessor und 32 GB RAM und ist ueber Intel Gigabit Ethernet angebunden. Als Betriebssystem wurde Ubuntu 18.04 verwendet mit der Linux-Kernel Version 5.3. \\
+
+In der Agent-Komponente wurde ein Mock implementiert, um einen externen CSP zu simulieren. Der Agent provisioniert keine "echten" Ressourcen, sondern simuliert das Erstellen von neuen Ressourcen durch eine Wartezeit zwischen 3 bis 5 Sekunden pro Instanz. Saemtliche Fake-Instanzen verweisen auf einen separat gestartete "Sink"-Anwendung, die dasselbe Interface wie die in bla vorgestellte Beispielanwendung besitzt, aber statt Anfragen zu verarbeiten diese verwirft. Hierdurch wird die Last der Beispielanwendung reduziert und eine Skalierung von Ressourcen simuliert.
+
+\subsubsection{Beispielanwendung} \hfill\\
+
+Als Beispielsanwendung fuer die automatische Skalierung, wurde ein Microservice implementiert, der ueber eine RESTful Webschnittstelle die Sortierung von Zahlenreihen durch eine Bubblesort-Implementierung anbietet. Da Bubblesort eine durschnittliche Laufzeit von $\Theta \left( n^{2}\right)$ besitzt, kann durch die Erhoehung der Zahlenreihe in einer Anfrage der Aufwand beliebig konfiguriert werden. Ein Container-Image wurde fuer den Microservice erstellt und in der Container-Registry der Gitlab-Instanz der HAW Hamburg bereitgestellt.
+
+\subsection{Durchfuehrung}
+
+We define the workload throughartillery4which allows us to execute user-likeworkloads such as URL path traversal or random path choice on endpoints. We utilizethis mainly to emulate heterogeneous user behaviour for the webshop, and to generatehigh load used for both demo applications
+
+\subsubsection{Workload-Profile} \hfill\\
+
+workload-cold-to-spike.yaml
+
+workload-rapid-growth.yaml
+
+workload-periodic-spikes.yaml
+
+workload-random-spikes.yaml
+
+\subsection{Auswertung}
+
+\subsection{Ergebnisse}
+Was
+
+Wie
+
+Womit?
+
+
 	
 	
 \section{Ausblick}
