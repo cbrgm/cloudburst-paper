@@ -13,6 +13,9 @@
 \usepackage{tabularx}
 \usepackage[ruled,vlined]{algorithm2e}
 \usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{layouts}
 
 % set custom section numbers depth
 \setcounter{secnumdepth}{5}
@@ -92,7 +95,7 @@ Die wichtigste Technologie bei Cloud-Computing zum Hosten und Verwalten von Anwe
 
 Trotz dieser modernen As-a-Service Angebote, ist die Umsetzung eines Hybrid-Cloud Ansatzes fuer viele Unternehmen nach wie vor eine grosse Herausforderung. Die Integration zwischen eigener Infrastruktur und den Schnittstellen der CSPs, sowie die Wahl von geeigneten Skalierungsmethoden, ohne dabei zu stark an eine bestimmte Cloud-Plattform gekoppelt zu sein, ist nicht trivial.  \\
 
-In dieser Arbeit wird eine verteilte Autoscaling-Architektur für Cloud-Bursting in Hybrid-Clouds vorgestellt, die automatisiert Ressourcen auf Basis von Metriken als Container-as-a-Service bei einem CSP provisionieren und skalieren kann. Die vorgestellte Architektur ist in der Lage, Anwendungen ueber mehrere Cloud-Umgebungen hinweg zu skalieren und provisionierte Ressourcen von mehreren Anbietern parallel in die eigene lokale Infrastruktur einzubinden. Fuer die automatische Skalierung von internen Ressourcen bei Lastspitzen zu CSPs werden Metriken aus externen Monitoring-Systemen genutzt, statt eigene Metriken zu implementieren. Im Vergleich zu anderen Ansaetzen (vgl. Abschnitt \ref{work}.), setzt die hier praesentierte Loesung nicht vorraus, das lokal ein Container-Cluster betrieben wird, was den Einsatz dieser Loesung attraktiv fuer Anwender macht, die kein Container-Cluster betreiben koennen, aber trotzdem ein Autoscaling fuer lokal betriebene Anwendungen haben moechten. Auch muessen lokal betriebene Anwendungen nicht modifiziert werden, um durch die vorgestellte Architektur skaliert zu werden. Die Komponenten der Autoscaling-Architektur koennen sowohl On-Premise, als auch extern bei einem CSP betrieben werden.
+In dieser Arbeit wird eine verteilte Autoscaling-Architektur für Cloud-Bursting in Hybrid-Clouds vorgestellt, die automatisiert Ressourcen auf Basis von Metriken als Container-as-a-Service bei einem CSP provisionieren und horizontal skalieren kann. Die vorgestellte Architektur ist in der Lage, Anwendungen ueber mehrere Cloud-Umgebungen hinweg zu skalieren und provisionierte Ressourcen von mehreren Anbietern parallel in die eigene lokale Infrastruktur einzubinden. Fuer die automatische Skalierung von internen Ressourcen bei Lastspitzen zu CSPs werden Metriken aus externen Monitoring-Systemen genutzt, statt eigene Metriken zu implementieren. Im Vergleich zu anderen Ansaetzen (vgl. Abschnitt \ref{work}.), setzt die hier praesentierte Loesung nicht vorraus, das lokal ein Container-Cluster betrieben wird, was den Einsatz dieser Loesung attraktiv fuer Anwender macht, die kein Container-Cluster betreiben koennen, aber trotzdem ein Autoscaling fuer lokal betriebene Anwendungen haben moechten. Auch muessen lokal betriebene Anwendungen nicht modifiziert werden, um durch die vorgestellte Architektur skaliert zu werden. Die Komponenten der Autoscaling-Architektur koennen sowohl On-Premise, als auch extern bei einem CSP betrieben werden.
 
 	
 \section{Related Work} \label{work}
@@ -378,14 +381,71 @@ workload-random-spikes.yaml
 \subsection{Auswertung}
 
 \subsection{Ergebnisse}
-Was
 
-Wie
+\begin{figure}
+	\centering
+	\begin{subfigure}{.5\textwidth}
+		\centering
+		\includegraphics{figures/workload-cold-to-spike-01.pdf}
+		\label{fig:sub1}
+	\end{subfigure}%
+	\begin{subfigure}{.5\textwidth}
+		\centering
+		\includegraphics{figures/workload-cold-to-spike-02.pdf}
+		\label{fig:sub2}
+	\end{subfigure}
+	\caption{Benchmark: workload-cold-to-spike.yaml}
+	\label{fig:test}
+\end{figure}	
 
-Womit?
+\begin{figure}
+	\centering
+	\begin{subfigure}{.5\textwidth}
+		\centering
+		\includegraphics{figures/workload-periodic-spikes-01.pdf}
+		\label{fig:sub1}
+	\end{subfigure}%
+	\begin{subfigure}{.5\textwidth}
+		\centering
+		\includegraphics{figures/workload-periodic-spikes-02.pdf}
+		\label{fig:sub2}
+	\end{subfigure}
+	\caption{Benchmark: workload-periodic-spikes.yaml}
+	\label{fig:test}
+\end{figure}	
 
 
-	
+\begin{figure}
+	\centering
+	\begin{subfigure}{.5\textwidth}
+		\centering
+		\includegraphics{figures/workload-random-spikes-01.pdf}
+		\label{fig:sub1}
+	\end{subfigure}%
+	\begin{subfigure}{.5\textwidth}
+		\centering
+		\includegraphics{figures/workload-random-spikes-02.pdf}
+		\label{fig:sub2}
+	\end{subfigure}
+	\caption{Benchmark: workload-random-spikes.yaml}
+	\label{fig:test}
+\end{figure}	
+
+\begin{figure}
+	\centering
+	\begin{subfigure}{.5\textwidth}
+		\centering
+		\includegraphics{figures/workload-rapid-growth-01.pdf}
+		\label{fig:sub1}
+	\end{subfigure}%
+	\begin{subfigure}{.5\textwidth}
+		\centering
+		\includegraphics{figures/workload-rapid-growth-02.pdf}
+		\label{fig:sub2}
+	\end{subfigure}
+	\caption{Benchmark: workload-rapid-growth.yaml}
+	\label{fig:test}
+\end{figure}	
 	
 \section{Ausblick}
 	
