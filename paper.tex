@@ -201,25 +201,25 @@ Auf oberster Ebene wird die Adresse der Prometheus-Instanz definiert, von welche
 
 Die Prozessor-Komponente der Control-Plane ist verantwortlich fuer das Abfragen der Metrikwerte und fuer das Berechnen der Allokierung oder Freigabe von Ressourcen fuer die in der Konfigurationsdatei definierten Services. Die Berechnung wird hierbei delegiert an die Autoscaler-Komponente und das Allokieren und Freigeben wiederum wird von der Requester-Komponente uebernommen.
 	
-\subsubsection{Autoscaler} \hfill\\
+\subsubsection{Autoscaler} \label{autoscaler} \hfill\\
 
 Die Autoscaler-Komponente berechnet die Allokierung oder Freigabe von Ressourcen. Bei jedem Evaluationsintervall $i$, wird auf Basis des Ergebnisses der zu einem Service zugehoerigen Metrikabfrage $q_{i}$ und dem Zustand der Control-Plane $S_{i}$ zu einem bestimmten Zeitpunkt $t_{i}$ ein Bedarf an Ressourcen $\Delta _{i}$ berechnet . Der Zustand $S_{i}$ ist definiert als
 
 \begin{gather*}
-	S_{i}=\left( I_{(in,r)_{i}}, I_{(ex,r)_{i}}, I_{(ex,p)_{i}},  I_{(ex,md)_{i}} , q_{i} \right)
+	S_{i}=\left( I_{(in,r)_{i}}, I_{(ex,r)_{i}}, I_{(ex,pr)_{i}},  I_{(ex,md)_{i}} , q_{i} \right)
 \end{gather*}
 
 wobei
 
 	$I_{(in,r)}$ = Instanzen \textit{intern} mit Zustand \textit{Running} \\
 	$I_{(ex,r)}$ = Instanzen \textit{extern} mit Zustand \textit{Running} \\
-	$I_{(ex,p)}$ = Instanzen \textit{extern} mit Zustand \textit{Pending} \\
+	$I_{(ex,pr)}$ = Instanzen \textit{extern} mit Zustand \textit{Progress} \\
 	$I_{(ex,md)}$ = Instanzen \textit{extern} mit markierter Loeschung \\
 	$q$ = Ergebnis einer Metrikabfrage
 	
 sowie der Bewertungsfunktion  $B$ fuer die Zustand $S_{i}$. \\
 
-$\Delta _{i}$ berechnet sich aus dem Zustand $S_{i}$ und der Bewertungsfunktion $B(S_{i})$. Die Bewertungsfunktion ergibt sich aus den fuer einen zu skalierenden Service festgelegeten Low-Level-Performance-Indikatoren oder High-Level-Performance-Indikatoren. \\
+$\Delta _{i}$ berechnet sich aus dem Zustand $S_{i}$ und der Bewertungsregeln $B(S_{i})$. Die Bewertungsregeln die fuer das automatische Skalieren von Ressourcen verwendet werden koennen, sind Faktoren die sich aus Performanz-, Kosten- oder Verfuegbarkeitszielen ergeben.\\
 
 Die Variablen des Zustandvektors $S_{i}$ werden fuer interne Ressourcen aus den Angaben in der Konfigurationsdatei und fuer externe Ressourcen anhand des Status der Instanzen zur Laufzeit ermittelt. Die Metrikabfrage $q$ wird ebenfalls in der Konfigurationsdatei (vgl. \ref{configuration}) definiert. Die Berechnung von $\Delta _{i}$ der in dieser Arbeit vorgestellten Architektur unter Verwendung der beschriebenen Variablen wird in Abschnitt bla dargestellt. 
 	
@@ -344,9 +344,14 @@ Die Proxy-Komponente fragt in Intervallen die Control-Plane nach aktiven Instanz
 
 \subsection{Skalierungstechnik} \label{skalierungstechnik}
 
-Requires expert knowledge about the dynamics of the ap-plication, including the service requirements of the appli-cation at each tier, and (ii) Requires sophisticated mod-eling expertise to determine when and how to resize thedeployment. For small and medium businesses (SMB),which comprise the targeted customer base for manycloud service providers (CSPs) [8,24], these hurdles arenon-trivial to overcome.
+Die in der Arbeit realisierte Skalierung misst an Hand einer anwendungsspezifischen Metrik (siehe Metrikabfrage $q$ in Abschnitt \ref{autoscaler}), in welchem Verhaeltnis $V$ die benoetigte Zahl der Instanzen zu der aktuellen Zahl der Instanzen steht. Eine Annahme der  Berechnungen des Ressourcenbedarfes ist, dass die Leistung von internen und extern allokierten Instanzen in etwa gleich ist.  \\
 
-Many CSPs today offer monitoring services to users (notnecessarily for free) for tracking resource usage. Whilesuch monitoring services provide valuable information,the user still requires expert knowledge about the appli-cation and the performance modeling expertise to con-vert the monitored information into scaling actions.Some CSPs also offer rule-based triggers to help usersscale their applications. These rule-based triggers allowthe users to specify some conditions on the monitoredmetrics which, when met, will trigger a pre-defined scal-ing action.  Even with the help of rule-based triggers,however, the burden of determining the threshold condi-tions for the metrics still rests with the user. For example,in order to use a CPU utilization based trigger for scal-ing, the user must determine the CPU threshold at whichto trigger scale-up and scale-down, and the number ofinstances to scale-up and scale-down
+$\Delta_{i}$ ist die Zahl, wieviele Instanzen zu den aktuell Existierenden zusaetzlich allokiert oder geloescht werden muessen. Sie berechnet sich als Produkt aus $(V-1)$ und der Summe der aktiv laufenden Instanzen $(i_{in,r} + i_{ex,r})$. Wenn sich die bereits parallel in Erstellung befindlichen Instanzen $i_{ex,pr}$ und zur Loeschung vorgemerkten Instanzen $ i_{ex,md}$ ergibt sich die Formel
+\begin{center}
+	$\Delta_{i} = (V-1) \times (i_{in,r} + i_{ex,r}) - i_{ex,pr} + i_{ex,md}$
+\end{center}
+
+Da das Ergebnis ganzzahlig sein muss, wird das nächsthöhere Ganzzahlige von $\Delta_{i}$ von der Skalierungsfunktion an die Requester-Komponente in der Control-Plane übermittelt.
 
 % file:///home/chris/Zotero/storage/LUKLJ8WX/Gandhi%20et%20al.%20-%20Adaptive,%20Model-driven%20Autoscaling%20for%20Cloud%20Appli.pdf
 
@@ -368,7 +373,14 @@ Desweiteren wurden Metriken wie z.B. Bearbeitungsdauer und Anzahl von HTTP-Anfra
 
 \subsection{Durchfuehrung}
 
-Als Skalierungsregel fuer die Bubblesort-Service Instanzen wurde festgelegt, dass die durchschnittlichen HTTP-Anfragen pro Sekunde einen Threshold von 150 nicht ueberschreiten duerfen d.h. der Service  wird skaliert, sobald die Instanzen mehr als 150 HTTP-Anfragen pro Sekunde erhalten. \\
+Als Skalierungsregel fuer die Bubblesort-Service Instanzen wurde festgelegt, dass die durchschnittlichen HTTP-Anfragen pro Sekunde einen Threshold von $th_{max}$ = 150 nicht ueberschreiten duerfen d.h. der Service  wird skaliert, sobald die Instanzen mehr als 150 HTTP-Anfragen pro Sekunde erhalten. \\
+
+Dafuer wurde die anwendungsspezifische Metrik $q$ = durchschnittliche HTTP-Anfragen pro Sekunde verwendet.
+Das in in bla beschrieben Verhaeltnis V wird durch den Ausdruck $(q/th_{max})$ berechnet und ergibt damit als $\Delta_{i}$
+
+\begin{center}
+	$\Delta_{i} = (q/th_{max}-1) \times (i_{in,r} + i_{ex,r}) - i_{ex,pr} + i_{ex,md}$
+\end{center}
 
 Zur Simulation von Benutzeranfragen wurde das Tool Artillery\footnote{https://artillery.io/} verwendet. Die Lastszenarien wurden in Artillerys eigenem Konfigurationsformat beschrieben, welches  in der offiziellen Dokumentation\footnote{https://artillery.io/docs/} des Tools nachlesbar ist. Die Skriptingmoeglichkeiten von Artillery in Form von Javascript Callbacks  wurden genutzt, um fuer jede simulierte Benutzeranfrage an den Bubblesort-Service eine zufaellige Zahlenreihe mit einer festen Laenge von 5000 Elementen zu generieren. Jedes Lastszenario besitzt eine Laufzeit von insgesamt 10 Minuten mit variablen Anfrageverlaeufen.\\
 
@@ -380,7 +392,8 @@ Die vorgestellte Autoscaling-Architektur ist ein verteiltes System, dass die aut
 	\item  5 Sek. Zeitintervall fuer das Abfragen des Zustands der Control Plane durch die Agents
 \end{itemize}
 
-Zuvor wurden Versuche mit unterschiedlichen Zeitintervallen zwischen den Komponenten vorgenommen, um eine geeignete Konfiguration zu ermitteln. Das Zeitintervall zwischen der Control-Plane und den Agents sollte unter dem Zeitintervall fuer das Abfragen von Metriken und Berechnung des Ressourcenbedarfs zwischen Prometheus und der Control Plane liegen. Ansonsten findet zwischen zwei Berechnung des Ressourcenbedarfs durch die Control-Plane keine Allokierung oder Freigabe von Ressourcen durch die Agents statt. Das Zeitintervall fuer Berechnung des Ressourcenbedarfs durch die Control-Plane sollte nicht zu kurz gesetzt werden, da sich ansonsten die Wirkung der Skalierung nicht in den fuer die Skalierung genutzten Metriken des Services wiederspiegelt und es hierdurch kurzzeitig zu einer Uebersteuerung kommt. \\
+Zuvor wurden Versuche mit unterschiedlichen Zeitintervallen zwischen den Komponenten vorgenommen, um eine geeignete Konfiguration zu ermitteln.
+Das Zeitintervall zwischen der Control-Plane und den Agents muss wesentlich unter dem Zeitintervall fuer das Abfragen von Metriken und Berechnung des Ressourcenbedarfs zwischen Prometheus und der Control Plane liegen. Ansonsten findet zwischen zwei Berechnung des Ressourcenbedarfs durch die Control-Plane keine Allokierung oder Freigabe von Ressourcen durch die Agents statt. Das Zeitintervall fuer Berechnung des Ressourcenbedarfs durch die Control-Plane darf nicht zu kurz gesetzt werden, da sich ansonsten die Wirkung der Skalierung nicht in den fuer die Skalierung genutzten Metriken des Services wiederspiegelt und es hierdurch kurzzeitig zu einer Uebersteuerung kommt. \\
 
 \subsubsection{Workload-Profile} \hfill\\
 
