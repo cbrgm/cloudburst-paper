@@ -152,7 +152,7 @@ Einem Service (\textit{ScrapeTarget}) sind mehrere Instanzen (\textit{Instances}
 
 \begin{figure}[h]
 	\centering
-	\includegraphics[width=0.8\linewidth,scale=0.8]{images/state.png}
+	\includegraphics[width=0.6\linewidth,scale=0.6]{images/state.png}
 	\caption{Zustandsdiagramm fuer Instanzen}
 \end{figure}
 
@@ -340,7 +340,7 @@ Fuer jeden genutzten CSP wird genau ein Agent gestartet. Ueber ein definiertes I
 
 Damit die Anfragen eines Klienten zwischen laufenden Instanzen auf der lokalen Infrastruktur und provisionierten Instanzen bei einem CSP verteilt werden koennen, wird ein Proxy in Form eines Loadbalancers zwischen der zu skalierenden Anwendung und den Klienten platziert. \\
 
-Die Proxy-Komponente fragt in Intervallen die Control-Plane nach aktiven Instanzen ab, um anschliessend die aktiven Endpunkte fuer die Lastverteilung zu konfigurieren. Die vorgestellte Architektur verwendet als Loadbalancer das in Go geschriebene Open-Source Projekt Skipper von der Firma Zalando. ergaenzt um eine eigene DataProvider Implementierung, um aktive Instanzen von der Control-Plane-Komponente abzufragen und in eine Routenkonfiguration fuer Skipper zu uebersetzen.
+Die Proxy-Komponente fragt in Intervallen die Control-Plane nach aktiven Instanzen ab, um anschliessend die aktiven Endpunkte fuer die Lastverteilung zu konfigurieren. Die vorgestellte Architektur verwendet als Loadbalancer das in Go geschriebene Open-Source Projekt Skipper\footnote{https://github.com/zalando/skipper} von der Firma Zalando. ergaenzt um eine eigene DataProvider Implementierung, um aktive Instanzen von der Control-Plane-Komponente abzufragen und in eine Routenkonfiguration fuer Skipper zu uebersetzen.
 
 \subsection{Skalierungstechnik} \label{skalierungstechnik}
 
@@ -362,25 +362,47 @@ In der Agent-Komponente wurde ein Mock implementiert, um einen externen CSP zu s
 
 \subsubsection{Beispielanwendung} \hfill\\
 
-Als Beispielsanwendung fuer die automatische Skalierung, wurde ein Microservice implementiert, der ueber eine RESTful Webschnittstelle die Sortierung von Zahlenreihen durch eine Bubblesort-Implementierung anbietet. Da Bubblesort eine durschnittliche Laufzeit von $\Theta \left( n^{2}\right)$ besitzt, kann durch die Erhoehung der Zahlenreihe in einer Anfrage der Aufwand beliebig konfiguriert werden. Ein Container-Image wurde fuer den Microservice erstellt und in der Container-Registry der Gitlab-Instanz der HAW Hamburg bereitgestellt.
+Als Beispielsanwendung fuer die automatische Skalierung, wurde ein Microservice\footnote{https://github.com/cbrgm/cloudburst/example} implementiert, der ueber eine RESTful Webschnittstelle die Sortierung von Zahlenreihen durch eine Bubblesort-Implementierung anbietet. Da der Bubblesort-Algorithmus eine durschnittliche Laufzeit von $\Theta \left( n^{2}\right)$ besitzt, kann durch die Erhoehung der Zahlenreihe in einer Anfrage der Aufwand beliebig konfiguriert werden. Ein Container-Image wurde fuer den Microservice erstellt und in der Container-Registry der Gitlab-Instanz der HAW Hamburg bereitgestellt. \\
+
+Desweiteren wurden Metriken wie z.B. Bearbeitungsdauer und Anzahl von HTTP-Anfragen in die Anwendung implementiert und koennen zur Laufzeit unter einem /metrics Endpunkt ueber den Service abgerufen werden.
 
 \subsection{Durchfuehrung}
 
-We define the workload throughartillery4which allows us to execute user-likeworkloads such as URL path traversal or random path choice on endpoints. We utilizethis mainly to emulate heterogeneous user behaviour for the webshop, and to generatehigh load used for both demo applications
+Als Skalierungsregel fuer die Bubblesort-Service Instanzen wurde festgelegt, dass die durchschnittlichen HTTP-Anfragen pro Sekunde einen Threshold von 150 nicht ueberschreiten duerfen d.h. der Service  wird skaliert, sobald die Instanzen mehr als 150 HTTP-Anfragen pro Sekunde erhalten. \\
+
+Zur Simulation von Benutzeranfragen wurde das Tool Artillery\footnote{https://artillery.io/} verwendet. Die Lastszenarien wurden in Artillerys eigenem Konfigurationsformat beschrieben, welches  in der offiziellen Dokumentation\footnote{https://artillery.io/docs/} des Tools nachlesbar ist. Die Skriptingmoeglichkeiten von Artillery in Form von Javascript Callbacks  wurden genutzt, um fuer jede simulierte Benutzeranfrage an den Bubblesort-Service eine zufaellige Zahlenreihe mit einer festen Laenge von 5000 Elementen zu generieren. Jedes Lastszenario besitzt eine Laufzeit von insgesamt 10 Minuten mit variablen Anfrageverlaeufen.\\
+
+Die vorgestellte Autoscaling-Architektur ist ein verteiltes System, dass die automatische Skalierung von Ressourcen asynchron umsetzt. Deshalb gibt es mehrere Faktoren, die Einfluss auf die Skalierung der Ressourcen haben. Folgende Zeitintervalle fuer die Abfragen zwischen den Komponenten der verteilten Autoscaling-Architektur wurden fuer die Experimente verwendet: 
+
+ \begin{itemize}
+	\item  5 Sek. Zeitintervall fuer das Abfragen von Metriken zwischen dem Bubblesort-Service und Prometheus
+	\item  20 Sek. Zeitintervall fuer das Abfragen von Metriken und Berechnung des Ressourcenbedarfs zwischen Prometheus und der Control Plane
+	\item  5 Sek. Zeitintervall fuer das Abfragen des Zustands der Control Plane durch die Agents
+\end{itemize}
+
+Zuvor wurden Versuche mit unterschiedlichen Zeitintervallen zwischen den Komponenten vorgenommen, um eine geeignete Konfiguration zu ermitteln. Das Zeitintervall zwischen der Control-Plane und den Agents sollte unter dem Zeitintervall fuer das Abfragen von Metriken und Berechnung des Ressourcenbedarfs zwischen Prometheus und der Control Plane liegen. Ansonsten findet zwischen zwei Berechnung des Ressourcenbedarfs durch die Control-Plane keine Allokierung oder Freigabe von Ressourcen durch die Agents statt. Das Zeitintervall fuer Berechnung des Ressourcenbedarfs durch die Control-Plane sollte nicht zu kurz gesetzt werden, da sich ansonsten die Wirkung der Skalierung nicht in den fuer die Skalierung genutzten Metriken des Services wiederspiegelt und es hierdurch kurzzeitig zu einer Uebersteuerung kommt. \\
 
 \subsubsection{Workload-Profile} \hfill\\
 
-workload-cold-to-spike.yaml
+Als Lastszenarien wurden vier typische Anfrageverlaeufe in Anwendungssystemen definiert. Alle Lastszenarien sind im Projektordner\footnote{https://github.com/cbrgm/cloudburst/experiments} unter "Experiments" zu finden.
 
-workload-rapid-growth.yaml
-
-workload-periodic-spikes.yaml
-
-workload-random-spikes.yaml
+ \begin{itemize}
+ 	\item \textbf{Cold to Spike} - Dieses Lastszenario simuliert einen Anfrageverlauf, bei dem Anfragen zwischen zwei Extremen schwanken. Zu einem Zeitpunkt werden fast keine Anfragen an die Anwendung gestellt, waehrend wenig spaeter die Anfragen ohne lange Wachstumsphase, rapide auf ein Maximum ansteigen. Das Lastszenario wird durch die Datei \textit{workload-cold-to-spike.yaml} beschrieben.
+ 	
+ 	\item \textbf{Periodic Spikes} - In diesem Lastszenario wird ein Anfrageverlauf definiert, der konstant verlaeuft, aber in festen, wiederkehrenden Intervallen einen Anstieg von Anfragen mit Wachstumsphase aufweist.  Das Lastszenario wird durch die Datei \textit{workload-periodic-spikes.yaml} beschrieben.
+ 	
+ 	\item \textbf{Random Spikes} - Der Anfrageverlauf dieses Lastszenarios aehnelt dem des \textit{Periodic Spikes}, mit den Unterschied dass das Anfragewachstum unterschiedlich stark und die Wachstumsintervalle unterschiedlich lange ausfallen.  Das Lastszenario wird durch die Datei \textit{workload-random-spikes.yaml} beschrieben.
+ 	
+ 	\item \textbf{Rapid Growth} -  Dieses Lastszenario simuliert einen Anfrageverlauf, der zunaechst konstant waechst, eine Plateauphase erreicht und anschliessend langsam wieder schrumpft. Das Lastszenario wird durch die Datei \textit{workload-rapid-growth.yaml} beschrieben.
+ \end{itemize}
 
 \subsection{Auswertung}
 
+Um das Verhalten der Autoscaling-Architektur zu ueberpruefen wurde direkt nach der Durchfuehrung eines Lastszenarios eine Zeitreihe mit Messwerten von verschiedenen Metriken exportiert. Darunter die durchschnittliche Anzahl der HTTP-Aufrufe an der Proxy-Komponente, um durch das Teilen durch den zu erreichenden Threshold einen exakten Bedarf zu einem Zeitpunkt berechnen zu koennen. Dem gegenueber steht die Anzahl der der laufenden Instanzen, provisioniert durch die Agents und aufgezeichnet vor einem Berechnungsschritt der Control-Plane. Ausserdem wurde die durchschnittliche Anzahl der HTTP-Aufrufe an dem zu skalierenden Bubblesort-Service gemessen, um nachzuvollziehen, ob die Anzahl der Aufrufe durch die Skalierung von Instanzen unter dem festgelegten Threshold bleibt.
+
 \subsection{Ergebnisse}
+
+Im Folgenden werden die Ergebnisse der in bla vorgestellten Workload-Profile nach der Durchfuehrung vorgestellt und diskutiert.
 
 \begin{figure}
 	\centering
