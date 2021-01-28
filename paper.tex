@@ -93,9 +93,12 @@ Cloud-Bursting ist ein Betriebsmodell, bei dem eine Anwendung in einer privaten 
 	
 Die wichtigste Technologie bei Cloud-Computing zum Hosten und Verwalten von Anwendungen ist die Virtualisierung. Traditionell wird Hardware-Level-Virtualisierung, auch bekannt als Hypervisor-basierte Virtualisierung, zur Verwaltung von virtuellen Maschinen (VMs) in Cloud-Rechenzentren verwendet. Ein grosser Fortschritt in der Virtualisierungstechnologie ist die Containerisierung von Anwendungen, die auch als Virtualisierung auf Betriebssystemebene bekannt ist. Aufgrund der besseren Portabilität, des geringen Ressourcenbedarfs und der einfachen Skalierbarkeit im Vergleich zur VM-basierten Virtualisierung, hat Containerisierung in den letzten Jahren deutlich Popularitaet gewonnen. Containerisierung eignet sich für die Verwaltung von Microservices, da sie das schnelle Starten und Beenden von Containern und somit schnelle Skalierbarkeit unterstützt, während die VM-basierte Virtualisierung vergleichsweise mehr Zeit für das Starten und Beenden der VM benötigt \cite{al-dhuraibi_elasticity_2018}, \cite{abdullah_containers_2019}. Viele Cloud-Service-Provider (CSPs) bieten Container-as-a-Service Angebote an, mit denen sich Container in einer Cloud-Umgebung betreiben lassen, ohne darunterliegende Infrastruktur selbst verwalten zu muessen. \\
 
-Trotz dieser modernen As-a-Service Angebote, ist die Umsetzung eines Hybrid-Cloud Ansatzes fuer viele Unternehmen nach wie vor eine grosse Herausforderung. Die Integration zwischen eigener Infrastruktur und den Schnittstellen der CSPs, sowie die Wahl von geeigneten Skalierungsmethoden, ohne dabei zu stark an eine bestimmte Cloud-Plattform gekoppelt zu sein, ist nicht trivial.  \\
+Fuer viele Unternhemen ist es unterschiedlichsten Gruenden nicht moeglich, ihre gesamte Infrastruktur zu einem CSP zu verlagern. Trotzdem bietet es sich situationsbedingt an, Teile der Infrastruktur bei Lastspiten auszulagern und kurzzeitig die eigenen Rechenkapazitaeten durch das Hinzuziehen von Ressourcen eines CSP zu steigern.
+Trotz moderner As-a-Service-Angebote, ist die Umsetzung eines Hybrid-Cloud-Ansatzes fuer viele Unternehmen ein nicht zu unterschaetzender Aufwand. Die Integration zwischen der eigenen Infrastruktur und den Schnittstellen der CSPs, sowie die Wahl von geeigneten Skalierungsmethoden, ohne dabei zu stark an eine bestimmte Cloud-Plattform gekoppelt zu sein, ist fuer viele Unternehmen eine grosse Herausforderung.  \\
 
-In dieser Arbeit wird eine verteilte Autoscaling-Architektur für Cloud-Bursting in Hybrid-Clouds vorgestellt, die automatisiert Ressourcen auf Basis von Metriken als Container-as-a-Service bei einem CSP provisionieren und horizontal skalieren kann. Die vorgestellte Architektur ist in der Lage, Anwendungen ueber mehrere Cloud-Umgebungen hinweg zu skalieren und provisionierte Ressourcen von mehreren Anbietern parallel in die eigene lokale Infrastruktur einzubinden. Fuer die automatische Skalierung von internen Ressourcen bei Lastspitzen zu CSPs werden Metriken aus externen Monitoring-Systemen genutzt, statt eigene Metriken zu implementieren. Im Vergleich zu anderen Ansaetzen (vgl. Abschnitt \ref{work}.), setzt die hier praesentierte Loesung nicht vorraus, das lokal ein Container-Cluster betrieben wird, was den Einsatz dieser Loesung attraktiv fuer Anwender macht, die kein Container-Cluster betreiben koennen, aber trotzdem ein Autoscaling fuer lokal betriebene Anwendungen haben moechten. Auch muessen lokal betriebene Anwendungen nicht modifiziert werden, um durch die vorgestellte Architektur skaliert zu werden. Die Komponenten der Autoscaling-Architektur koennen sowohl On-Premise, als auch extern bei einem CSP betrieben werden.
+In dieser Arbeit wird eine verteilte Autoscaling-Architektur für Cloud-Bursting in Hybrid-Clouds vorgestellt, die automatisiert Ressourcen auf Basis von Metriken als Container-as-a-Service bei einem CSP provisionieren und horizontal skalieren kann. Die vorgestellte Architektur ist in der Lage, Anwendungen ueber mehrere Cloud-Umgebungen hinweg zu skalieren und provisionierte Ressourcen von mehreren Anbietern parallel in die eigene lokale Infrastruktur einzubinden. Fuer die automatische Skalierung von internen Ressourcen bei Lastspitzen zu CSPs werden Metriken aus externen Monitoring-Systemen genutzt, statt eigene Metriken zu implementieren. Im Vergleich zu anderen Ansaetzen (vgl. Abschnitt \ref{work}.), setzt die hier praesentierte Loesung nicht vorraus, das lokal ein Container-Cluster betrieben wird, was den Einsatz dieser Loesung attraktiv fuer Anwender macht, die kein Container-Cluster betreiben koennen, aber trotzdem ein Autoscaling fuer lokal betriebene Anwendungen benoetigen. Auch muessen lokal betriebene Anwendungen nicht modifiziert werden, um durch die vorgestellte Architektur skaliert zu werden. Die Komponenten der Autoscaling-Architektur koennen sowohl On-Premise, als auch extern bei einem CSP betrieben werden. \\
+
+Desweiteren wird ein Prototyp mit einer reaktiven Skalierungstechnik, die den Lebenszyklus von Ressourcen beruecksichtigt, implementiert und das Verhalten der Autoscaling-Architektur unter verschiedenen Lastszenarien evaluiert.
 
 	
 \section{Related Work} \label{work}
@@ -126,7 +129,7 @@ In diesem Abschnitt wird auf die entwickelte Autoscaler-Architektur beschrieben.
 
 Die Systemarchitekur des verteilten Autoscalers fuer Cloud-Bursting in Hybrid-Clouds ist in Fig. \ref{systemarchitektur} dargestellt. Abgebildet sind sowohl die interne on-premise, als auch externe Infrastruktur des CSPs. Der Autoscaler selbst besteht auf mehreren Teilanwendungen, die jeweils in einem eigenen Prozess gestartet werden und gemeinsam die automatische Skalierung von lokalen Anwendungen umsetzen.
 	
-\begin{figure}[h]
+\begin{figure}
 	\centering
 	\includegraphics[width=1.0\linewidth,scale=1.0]{images/context.png}
 	\caption{Systemarchitektur und Kontextdarstellung der Autoscaling-Architektur}
@@ -135,13 +138,13 @@ Die Systemarchitekur des verteilten Autoscalers fuer Cloud-Bursting in Hybrid-Cl
 
 Vorraussetzung fuer das automatische Skalieren einer lokal bereitgestellten Anwendung ist, dass diese Metriken zur Laufzeit exportiert und durch ein Monitoring-Tool ueberwacht wird. Ausserdem muss die zu skalierende Anwendung oder ein deploybarer Teil der Anwendung als ausfuehrbarer Container in einer Container-Registry vorliegen. \\
 
-Kernelement der Architektur ist die Control-Plane-Komponente (vgl. \ref{control_plane}), welche in regelmaessigen Intervallen die von einem Administrator festgelegten SLOs gegenueber dem Monitoring-Tool evaluiert und die Allokierung oder Freigabe von Ressourcen berechnet. Ueber eine Webschnittstelle rufen die Agent Komponenten ueber ein Polling-Ansatz regelmaessig den Status ueber zu startende oder zu terminierende Instanzen zu einem Zeitpunkt ab. Im Vergleich zur Control-Plane sind die Agents statuslos und setzen den durch den Autoscaler berechneten Bedarf an Instanzen zu einem Zeitpunkt bei einem CSP um. Fuer jeden CSP zu dem Instanzen bei einer automatischen Skalierung ausgelagert werden sollen, wird genau ein Agent deployed. Weitere CSPs koennen ueber die Implementierung eines Interfaces angebunden werden. Bei jeder Statusveraenderung einer Instanz (vgl. Status) schreibt der Agent diese zurueck an die Control Plane. Zwischen dem aufrufenden Client und der zu skalierenden Anwendung ist ein Proxy geschaltet, der als Loadbalancer agiert. Der Proxy nutzt ebenfalls einen Polling-Ansatz um die Routeninformationen von gestarteten Instanzen bei den CSPs zu erfragen. Anfragen, die den Proxy durchlaufen, werden nun automatisch zwischen lokalen und externen Instanzen einer Anwendung geroutet.
+Kernelement der Architektur ist die Control-Plane-Komponente (vgl. \ref{control_plane}), welche in regelmaessigen Intervallen die von einem Administrator festgelegten SLOs gegenueber dem Monitoring-Tool evaluiert und die Allokierung oder Freigabe von Ressourcen berechnet. Ueber eine Webschnittstelle rufen die Agent Komponenten ueber ein Polling-Ansatz regelmaessig den Status ueber zu startende oder zu terminierende Instanzen zu einem Zeitpunkt ab. Im Vergleich zur Control-Plane sind die Agents statuslos und setzen den durch den Autoscaler berechneten Bedarf an Instanzen zu einem Zeitpunkt bei einem CSP um. Fuer jeden CSP zu dem Instanzen bei einer automatischen Skalierung ausgelagert werden sollen, wird genau ein Agent deployed. Weitere CSPs koennen ueber die Implementierung eines Interfaces angebunden werden. Bei jeder Statusveraenderung einer Instanz (vgl. Status) schreibt der Agent diese zurueck an die Control-Plane. Zwischen dem aufrufenden Client und der zu skalierenden Anwendung ist ein Proxy geschaltet, der als Loadbalancer agiert. Der Proxy nutzt ebenfalls einen Polling-Ansatz um die Routeninformationen von gestarteten Instanzen bei den CSPs zu erfragen. Anfragen, die den Proxy durchlaufen, werden nun automatisch zwischen lokalen und externen Instanzen einer Anwendung geroutet.
 
 \subsection{Datenmodell}
 
 Die Entitaeten sind in Fig. \ref{datenmodell} dargestellt. Eine Anwendung besteht aus mehreren Services, wobei ein Service das Element einer automatischen Skalierung durch den Autoscaler sein soll. Diese Services werden in einer Konfigurationsdatei (vgl. \ref{configuration}) als sogenannte \textit{ScrapeTargets} definiert. Ein ScrapeTarget beschreibt einen Service mit einer Metrikabfrage, die in Intervallen an das Monitoring-Tool gesendet und fuer die Berechnung der Skalierung eines Services evaluiert wird. Auch wird beschrieben, wie die zu startende Container-Instanz bei einem CSP parametrisiert (\textit{InstanceSpec}) wird und welche Instanzen in der lokalen Infrastruktur ausgefuehrt werden (\textit{staticSpec}).
 
-\begin{figure}[h]
+\begin{figure}
 	\centering
 	\includegraphics[width=1.0\linewidth,scale=0.8]{images/datamodel.png}
 	\caption{Entitaeten der Autoscaling-Architektur, dargestellt als Baumdiagramm}
@@ -150,7 +153,7 @@ Die Entitaeten sind in Fig. \ref{datenmodell} dargestellt. Eine Anwendung besteh
 
 Einem Service (\textit{ScrapeTarget}) sind mehrere Instanzen (\textit{Instances}) zugeordnet. Eine Instanz beschreibt einen zustandsbehafteten Prozess, in dem die zu skalierende Anwendung oder Teilanwendung ausgefuehrt wird oder ausgefuehrt werden soll. Die Parameterbeschreibung eines Containers  in einem ScrapeTarget,  dient als Schablone fuer das Erstellen von Instanzen die einem Service zugeordnet sind.
 
-\begin{figure}[h]
+\begin{figure}
 	\centering
 	\includegraphics[width=0.6\linewidth,scale=0.6]{images/state.png}
 	\caption{Zustandsdiagramm fuer Instanzen}
@@ -160,15 +163,15 @@ Instanzen besitzen einen Lebenszyklus, welcher durch die Bearbeitung durch die A
 	
 \subsection{Control Plane} \label{control_plane}
 
-Die Control Plane ist das Kernelement der Autoscaling-Architektur. Fuer jeden zu skalierenden Service, wird in zeitlichen Intervallen die festgelegte Metrik von dem Monitoring-Tool abgefragt. Das Ergebnis dieser Abfrage wird in die Berechnung fuer den Bedarf neuer Instanzen einkalkuliert. Anhand des Bedarfes wird der Zustand der Control Plane modifiziert. Ueber eine RESTful Webschnittstelle koennen andere Komponenten wie der Proxy und die Agents diesen Zustand abrufen und veraendern, beispielsweise wenn der Status einer Instanz aktualisiert wurde.
+Die Control-Plane ist das Kernelement der Autoscaling-Architektur. Fuer jeden zu skalierenden Service, wird in zeitlichen Intervallen die festgelegte Metrik von dem Monitoring-Tool abgefragt. Das Ergebnis dieser Abfrage wird in die Berechnung fuer den Bedarf neuer Instanzen einkalkuliert. Anhand des Bedarfes wird der Zustand der Control-Plane modifiziert. Ueber eine RESTful Webschnittstelle koennen andere Komponenten wie der Proxy und die Agents diesen Zustand abrufen und veraendern, beispielsweise wenn der Status einer Instanz aktualisiert wurde.
 
 \begin{figure}[h]
 	\centering
-	\includegraphics[width=1.0\linewidth,scale=1.0]{images/autoscaler.png}
+	\includegraphics[width=0.8\linewidth,scale=0.8]{images/autoscaler.png}
 	\caption{Komponentendiagramm der Control-Plane Komponente}
 \end{figure}
 
-In der hier vorgestellten Implementierung wird Prometheus\footnote{https://github.com/prometheus} als Monitoring-Tool verwendet.  Prometheus zeichnet Echtzeitmetriken in einer Zeitreihendatenbank auf, ueber Webaufrufe von Anwendungenen abgefragt werden. Ausserdem bietet Prometheus eine funktionale Abfragesprache namens PromQL (Prometheus Query Language) an, mit der Clients Zeitreihendaten in Echtzeit selektieren und aggregieren koennen. Das Ergebnis eines Ausdrucks wird von der Control Plane in zeitlichen Intervallen ueber eine Webschnittstelle von Prometheus konsumiert. \\
+In der hier vorgestellten Implementierung wird Prometheus\footnote{https://github.com/prometheus} als Monitoring-Tool verwendet.  Prometheus zeichnet Echtzeitmetriken in einer Zeitreihendatenbank auf, ueber Webaufrufe von Anwendungenen abgefragt werden. Ausserdem bietet Prometheus eine funktionale Abfragesprache namens PromQL (Prometheus Query Language) an, mit der Clients Zeitreihendaten in Echtzeit selektieren und aggregieren koennen. Das Ergebnis eines Ausdrucks wird von der Control-Plane in zeitlichen Intervallen ueber eine Webschnittstelle von Prometheus konsumiert. \\
 
 Als Datenbank wird die in Go geschriebene BoltDB\footnote{https://github.com/etcd-io/bbolt} als einfacher, schneller und zuverlässiger Key-Value Store verwendet. Ueber eine Adapter-Komponente (\textit{StateProvider}) und ein definiertes Interface lassen sich jedoch weitere Datenbanken anbinden.
 
@@ -181,13 +184,14 @@ prometheus_url: http://localhost:9090
 targets:
 	- name: bubblesort-service
 		path: /bubblesort
-		description: requests amount greater than 15 rps
+		description: requests amount greater than 150 rps
 		query: |
-		(sum(rate(example_sorting_requests_total[30s])) / 15)
+		(sum(rate(example_sorting_requests_total[30s])) / 150)
 		spec:
 			container:
 				name: "bubblesort-svc"
 				image: cbrgm/example-app:latest
+				...
 		static:
 			endpoints:
 				- http://localhost:9997
@@ -221,7 +225,7 @@ sowie der Bewertungsfunktion  $B$ fuer die Zustand $S_{i}$. \\
 
 $\Delta _{i}$ berechnet sich aus dem Zustand $S_{i}$ und der Bewertungsregeln $B(S_{i})$. Die Bewertungsregeln die fuer das automatische Skalieren von Ressourcen verwendet werden koennen, sind Faktoren die sich aus Performanz-, Kosten- oder Verfuegbarkeitszielen ergeben.\\
 
-Die Variablen des Zustandvektors $S_{i}$ werden fuer interne Ressourcen aus den Angaben in der Konfigurationsdatei und fuer externe Ressourcen anhand des Status der Instanzen zur Laufzeit ermittelt. Die Metrikabfrage $q$ wird ebenfalls in der Konfigurationsdatei (vgl. \ref{configuration}) definiert. Die Berechnung von $\Delta _{i}$ der in dieser Arbeit vorgestellten Architektur unter Verwendung der beschriebenen Variablen wird in Abschnitt bla dargestellt. 
+Die Variablen des Zustandvektors $S_{i}$ werden fuer interne Ressourcen aus den Angaben in der Konfigurationsdatei und fuer externe Ressourcen anhand des Status der Instanzen zur Laufzeit ermittelt. Die Metrikabfrage $q$ wird ebenfalls in der Konfigurationsdatei (vgl. \ref{configuration}) definiert. Die Berechnung von $\Delta _{i}$ der in dieser Arbeit vorgestellten Architektur unter Verwendung der beschriebenen Variablen wird in Abschnitt \ref{skalierungstechnik} dargestellt. 
 	
 \subsubsection{Requester}  \hfill\\
 
@@ -276,9 +280,10 @@ Die Requester-Komponente ist fuer die Veraenderung des Zustandes der Control-Pla
 	}
 	
 	\caption{resource provisioning based on instance state}
+	\label{fig:requester_algorithm}
 \end{algorithm}
 
-Die Funktionsweise des Requesters ist in Abbildung bla dargestellt. In Versuchen wurde festgestellt, dass bei fast gleichbleibender Lastverhalten, Instanzen gestartet und gestoppt wurden. Diesem wird entgegengewirkt durch die Einfuehrung eines Thresholds, ab dem die Steuerung der Provisionierung reagiert. Dadurch  wird die Steuerung  traeger und somit unempfindlicher gegenueber Schwankungen in Ergebnissen de Messintervalle. \\
+Die Funktionsweise des Requesters ist in Alg. \ref{fig:requester_algorithm} dargestellt. In Versuchen wurde festgestellt, dass bei fast gleichbleibender Lastverhalten, Instanzen gestartet und gestoppt wurden. Diesem wird entgegengewirkt durch die Einfuehrung eines Thresholds, ab dem die Steuerung der Provisionierung reagiert. Dadurch  wird die Steuerung  traeger und somit unempfindlicher gegenueber Schwankungen in Ergebnissen de Messintervalle. \\
 
 
 \begin{algorithm}[H]
@@ -296,7 +301,7 @@ Die Funktionsweise des Requesters ist in Abbildung bla dargestellt. In Versuchen
 
 \subsection{Agents}
 
-Die Agents sind verantwortlich fuer das Allokieren und Freigeben von Ressourcen bei einem CSP gemaess des Zustands der Control-Plane. Die Agents sind zustandslos und fuehren in festgelegten Intervallen die in Abbildung bla vorgestellte Routine aus. \\
+Die Agents sind verantwortlich fuer das Allokieren und Freigeben von Ressourcen bei einem CSP gemaess des Zustands der Control-Plane. Die Agents sind zustandslos und fuehren in festgelegten Intervallen die in Alg. \ref{agent_algorithm} vorgestellte Routine aus. \\
 
 \begin{algorithm}[H]
 	\DontPrintSemicolon
@@ -332,6 +337,7 @@ Die Agents sind verantwortlich fuer das Allokieren und Freigeben von Ressourcen 
 		
 	}
 	\caption{agent resource provisioning routine}
+	\label{agent_algorithm}
 \end{algorithm}
 
 Fuer jeden genutzten CSP wird genau ein Agent gestartet. Ueber ein definiertes Interface werden plattformspezifische Schnittstellen zur Provisionierung von Ressourcen bei dem CSP angebunden. Ein Agent kann auf der eigenen lokalen Infrastruktur, oder aber direkt auf der Plattform des CSP ausgefuehrt werden.
@@ -351,7 +357,7 @@ $\Delta_{i}$ ist die Zahl, wieviele Instanzen zu den aktuell Existierenden zusae
 	$\Delta_{i} = (V-1) \times (i_{in,r} + i_{ex,r}) - i_{ex,pr} + i_{ex,md}$
 \end{center}
 
-Da das Ergebnis ganzzahlig sein muss, wird das nächsthöhere Ganzzahlige von $\Delta_{i}$ von der Skalierungsfunktion an die Requester-Komponente in der Control-Plane übermittelt.
+Da das Ergebnis fuer den Ressourcenbedarf ganzzahlig sein muss, wird das nächsthöhere Ganzzahlige von $\Delta_{i}$ von der Skalierungsfunktion an die Requester-Komponente in der Control-Plane übermittelt.
 
 % file:///home/chris/Zotero/storage/LUKLJ8WX/Gandhi%20et%20al.%20-%20Adaptive,%20Model-driven%20Autoscaling%20for%20Cloud%20Appli.pdf
 
@@ -361,11 +367,11 @@ In diesem Abschnitt wird erlaeutert, wie die Autoscaling-Architektur eine contai
 
 \subsection{Testumgebung}
 
-Die Control-Plane, der Agent, der Proxy und eine zu skalierende Beispielanwendung, welche in bla genauer beschrieben wird, wurden auf einer Testinstanz der Infrastruktur der HAW Hamburg in Containern ausgefuehrt. Die Instanz besitzt einen E5-2670-Prozessor und 32 GB RAM und ist ueber Intel Gigabit Ethernet angebunden. Als Betriebssystem wurde Ubuntu 18.04 verwendet mit der Linux-Kernel Version 5.3. \\
+Die Control-Plane, der Agent, der Proxy und eine zu skalierende Beispielanwendung, welche in \ref{Beispielanwendung} genauer beschrieben wird, wurden auf einer Testinstanz der Infrastruktur der HAW Hamburg in Containern ausgefuehrt. Die Instanz besitzt einen E5-2670-Prozessor und 32 GB RAM und ist ueber Intel Gigabit Ethernet angebunden. Als Betriebssystem wurde Ubuntu 18.04 verwendet mit der Linux-Kernel Version 5.3. \\
 
-In der Agent-Komponente wurde ein Mock implementiert, um einen externen CSP zu simulieren. Der Agent provisioniert keine "echten" Ressourcen, sondern simuliert das Erstellen von neuen Ressourcen durch eine Wartezeit zwischen 3 bis 5 Sekunden pro Instanz. Saemtliche Fake-Instanzen verweisen auf einen separat gestartete "Sink"-Anwendung, die dasselbe Interface wie die in bla vorgestellte Beispielanwendung besitzt, aber statt Anfragen zu verarbeiten diese verwirft. Hierdurch wird die Last der Beispielanwendung reduziert und eine Skalierung von Ressourcen simuliert.
+In der Agent-Komponente wurde ein Mock implementiert, um einen externen CSP zu simulieren. Der Agent provisioniert keine "echten" Ressourcen, sondern simuliert das Erstellen von neuen Ressourcen durch eine Wartezeit zwischen 3 bis 5 Sekunden pro Instanz. Saemtliche Fake-Instanzen verweisen auf einen separat gestartete "Sink"-Anwendung, die dasselbe Interface wie die in Abschnitt \ref{Beispielanwendung} vorgestellte Beispielanwendung besitzt, aber statt Anfragen zu verarbeiten diese verwirft. Hierdurch wird die Last der Beispielanwendung reduziert und eine Skalierung von Ressourcen simuliert.
 
-\subsubsection{Beispielanwendung} \hfill\\
+\subsubsection{Beispielanwendung} \label{Beispielanwendung} \hfill\\
 
 Als Beispielsanwendung fuer die automatische Skalierung, wurde ein Microservice\footnote{https://github.com/cbrgm/cloudburst/example} implementiert, der ueber eine RESTful Webschnittstelle die Sortierung von Zahlenreihen durch eine Bubblesort-Implementierung anbietet. Da der Bubblesort-Algorithmus eine durschnittliche Laufzeit von $\Theta \left( n^{2}\right)$ besitzt, kann durch die Erhoehung der Zahlenreihe in einer Anfrage der Aufwand beliebig konfiguriert werden. Ein Container-Image wurde fuer den Microservice erstellt und in der Container-Registry der Gitlab-Instanz der HAW Hamburg bereitgestellt. \\
 
@@ -373,10 +379,10 @@ Desweiteren wurden Metriken wie z.B. Bearbeitungsdauer und Anzahl von HTTP-Anfra
 
 \subsection{Durchfuehrung}
 
-Als Skalierungsregel fuer die Bubblesort-Service Instanzen wurde festgelegt, dass die durchschnittlichen HTTP-Anfragen pro Sekunde einen Threshold von $th_{max}$ = 150 nicht ueberschreiten duerfen d.h. der Service  wird skaliert, sobald die Instanzen mehr als 150 HTTP-Anfragen pro Sekunde erhalten. \\
+Als Skalierungsregel fuer die Bubblesort-Service Instanzen wurde festgelegt, dass die durchschnittlichen HTTP-Anfragen pro Sekunde einen Threshold von $th_{max}$ = 150 nicht ueberschreiten duerfen d.h. der Service  wird skaliert, sobald die Instanzen im Durchscnitt mehr als 150 HTTP-Anfragen pro Sekunde erhalten. \\
 
 Dafuer wurde die anwendungsspezifische Metrik $q$ = durchschnittliche HTTP-Anfragen pro Sekunde verwendet.
-Das in in bla beschrieben Verhaeltnis V wird durch den Ausdruck $(q/th_{max})$ berechnet und ergibt damit als $\Delta_{i}$
+Das in in Abschnitt \ref{autoscaler} beschrieben Verhaeltnis V wird durch den Ausdruck $(q/th_{max})$ berechnet und ergibt damit als $\Delta_{i}$
 
 \begin{center}
 	$\Delta_{i} = (q/th_{max}-1) \times (i_{in,r} + i_{ex,r}) - i_{ex,pr} + i_{ex,md}$
@@ -388,12 +394,12 @@ Die vorgestellte Autoscaling-Architektur ist ein verteiltes System, dass die aut
 
  \begin{itemize}
 	\item  5 Sek. Zeitintervall fuer das Abfragen von Metriken zwischen dem Bubblesort-Service und Prometheus
-	\item  20 Sek. Zeitintervall fuer das Abfragen von Metriken und Berechnung des Ressourcenbedarfs zwischen Prometheus und der Control Plane
-	\item  5 Sek. Zeitintervall fuer das Abfragen des Zustands der Control Plane durch die Agents
+	\item  20 Sek. Zeitintervall fuer das Abfragen von Metriken und Berechnung des Ressourcenbedarfs zwischen Prometheus und der Control-Plane
+	\item  5 Sek. Zeitintervall fuer das Abfragen des Zustands der Control-Plane durch die Agents
 \end{itemize}
 
 Zuvor wurden Versuche mit unterschiedlichen Zeitintervallen zwischen den Komponenten vorgenommen, um eine geeignete Konfiguration zu ermitteln.
-Das Zeitintervall zwischen der Control-Plane und den Agents muss wesentlich unter dem Zeitintervall fuer das Abfragen von Metriken und Berechnung des Ressourcenbedarfs zwischen Prometheus und der Control Plane liegen. Ansonsten findet zwischen zwei Berechnung des Ressourcenbedarfs durch die Control-Plane keine Allokierung oder Freigabe von Ressourcen durch die Agents statt. Das Zeitintervall fuer Berechnung des Ressourcenbedarfs durch die Control-Plane darf nicht zu kurz gesetzt werden, da sich ansonsten die Wirkung der Skalierung nicht in den fuer die Skalierung genutzten Metriken des Services wiederspiegelt und es hierdurch kurzzeitig zu einer Uebersteuerung kommt. \\
+Das Zeitintervall zwischen der Control-Plane und den Agents muss wesentlich unter dem Zeitintervall fuer das Abfragen von Metriken und Berechnung des Ressourcenbedarfs zwischen Prometheus und der Control-Plane liegen. Ansonsten findet zwischen zwei Berechnung des Ressourcenbedarfs durch die Control-Plane keine Allokierung oder Freigabe von Ressourcen durch die Agents statt. Das Zeitintervall fuer Berechnung des Ressourcenbedarfs durch die Control-Plane darf nicht zu kurz gesetzt werden, da sich ansonsten die Wirkung der Skalierung nicht in den fuer die Skalierung genutzten Metriken des Services wiederspiegelt und es hierdurch kurzzeitig zu einer Uebersteuerung kommt. \\
 
 \subsubsection{Workload-Profile} \hfill\\
 
@@ -415,14 +421,14 @@ Um das Verhalten der Autoscaling-Architektur zu ueberpruefen wurde direkt nach d
 
 \subsection{Ergebnisse}
 
-Im Folgenden werden die Ergebnisse der in bla vorgestellten Workload-Profile nach der Durchfuehrung vorgestellt und diskutiert.
+Im Folgenden werden die Ergebnisse der durchgefuehrten Lastszenarien beschrieben. Bei den Ergebnissen jeder Durchfuehrung ist zu beobachten, dass die Anzahl der aktiven Instanzen leicht verzoegert gegenueber der berechneten, benoetigten Anzahl an Instanzen ist. Grund hierfuer ist die Entscheidung fuer den Einsatz der reaktiven Skalierungstechnik. Die Anzahl der aktiven Instanzen in den Auswertungskurven des Skalierungsverhaltens faellt nicht unter den Wert von einer Instanz, da die lokal laufende Instanz des Bubblesort-Services in der Darstellung schon mit beruecksichtigt wurde. \\
 
 \begin{figure}
 	\centering
 	\begin{subfigure}{.5\textwidth}
 		\centering
 		\includegraphics{figures/workload-cold-to-spike-01.pdf}
-		\label{fig:sub1}
+		\label{fig:sub11}
 	\end{subfigure}%
 	\begin{subfigure}{.5\textwidth}
 		\centering
@@ -430,41 +436,42 @@ Im Folgenden werden die Ergebnisse der in bla vorgestellten Workload-Profile nac
 		\label{fig:sub2}
 	\end{subfigure}
 	\caption{Benchmark: workload-cold-to-spike.yaml}
-	\label{fig:test}
-\end{figure}	
+	\label{fig:benchmark_01}
+\end{figure}
 
+In Abb. \ref{fig:benchmark_01} ist zu beobachten, dass die durchschnittliche Anzahl an HTTP-Anfragen pro Sekunde an den Bubbelsort-Service zu Beginn jeder Wachstumsphase den Threshold stark uebersteigen. Grund hierfuer ist, dass die Control-Plane in Intervallen agiert. Zu beobachten ist, dass ab der 100 Sekunde eine Berechnung des Ressourcenbedarfes durch die Control-Plane durchgefuehrt und wenig  spaeter erfolgreich zwei Instanzen zusaetzlich durch den Agent provisioniert wurden. Die Wirkung der Lastverteilung durch den Proxy zeigt sich wenig spaeter durch das Abfallen der Lastspitze unter den Zielwert des Thresholds von 150 durchschnittlichen  HTTP-Anfragen pro Sekunde. Interessant zu beobachten ist der Aussreisser bei Sekunde 330. Hier wird eine Berechnung des Ressourcenbedarfs durchgefuehrt und in Folge eines ueberstiegenden Thresholdwertes zwei Instanzen provisioniert. Jedoch ist der Thresholdwert zum Zeitpunkt der folgenden Berechnung des Ressourcenbedarfs trotz des starken Abflachens der Anfragen nach wie vor ueber dem Zielwert von 150, weshalb kurzzeitig eine dritte Instanz provisioniert wird. Die dritte Instanz wird wenig spaeter freigegeben, da sich nun der Thresholdwert unter dem Zielwert befindet. \\
+	
 \begin{figure}
 	\centering
 	\begin{subfigure}{.5\textwidth}
 		\centering
 		\includegraphics{figures/workload-periodic-spikes-01.pdf}
-		\label{fig:sub1}
 	\end{subfigure}%
 	\begin{subfigure}{.5\textwidth}
 		\centering
 		\includegraphics{figures/workload-periodic-spikes-02.pdf}
-		\label{fig:sub2}
 	\end{subfigure}
 	\caption{Benchmark: workload-periodic-spikes.yaml}
-	\label{fig:test}
+	\label{fig:benchmark_02}
 \end{figure}	
 
+In Abb. \ref{fig:benchmark_02} ist ein aehnliches Verhalten wie in  \ref{fig:benchmark_01} zu beobachten. Zu beobachten ist, wie zusaetzliche Instanzen provisioniert werden, sobald der Thresholdwert von 150 ueberschritten wird. Zum Ende der beiden Wachstumsphasen bei Sekunde 200 und 400 ist ein kurzer Anstieg der Instanzenanzahl zusehen. Anhand der durchschnittlichen Anzahl an HTTP-Anfragen pro Sekunde an den Bubbelsort-Service ist zu erkennen, dass der der Thresholdwert von 150 erneut ueberschritten wurde und in Folge  kurzzeitig eine weitere Instanz gestartet wurde. Die Anzahl der laufenden Instanzen sinkt wenig spaeter wieder auf den Anfangswert von 1, da auch die Lastspitze stark abfaellt. Dieses Verhalten ist auch in Abb. \ref{fig:benchmark_03} zusehen.
 
 \begin{figure}
 	\centering
 	\begin{subfigure}{.5\textwidth}
 		\centering
 		\includegraphics{figures/workload-random-spikes-01.pdf}
-		\label{fig:sub1}
 	\end{subfigure}%
 	\begin{subfigure}{.5\textwidth}
 		\centering
 		\includegraphics{figures/workload-random-spikes-02.pdf}
-		\label{fig:sub2}
 	\end{subfigure}
 	\caption{Benchmark: workload-random-spikes.yaml}
-	\label{fig:test}
-\end{figure}	
+	\label{fig:benchmark_03}
+\end{figure}
+
+In Abb. \ref{fig:benchmark_04} ist deutlich zu erkennen, wie die Autoscaling-Architektur mit steigender Anfragekurve die Anzahl der benoetigten Instanzen adjustiert. Ab Sekunde 100 wird der Thresholdwert von 150 ueberstiegen und eine weitere Instanz gestartet. Die durchschnittliche Anzahl an HTTP-Anfragen pro Sekunde an den Bubbelsort-Service flacht daraufhin kurzzeitig ab, ehe sie langsam wieder ansteigt und erneut den Thresoldwert uebersteigt. Anschliessend wird reagiert und wieder eine weitere Instanz gestartet. Waehrend der Plateauphase beginnend ab Sekunde 210 ist deutlich zu erkennen, dass das Ziel die durchschnittliche Anzahl an HTTP-Anfragen pro Sekunde fuer eine Instanz unter einem Wert von 150 zu halten, erfuellt wird. Durch das Abfallen des Anfrageverlaufes wird ab Sekunde 400 eine Instanz abgeschaltet, in Folge dessen erhaelt der Bubblesort-Service mehr Anfragen die zu Bearbeiten sind. Dem Thresholdwert wird sich angenaehert und kurzzeitg ueberschritten. Jedoch viel das Berechnungsintervall fuer den Ressourcenbedarf nicht in den Zeitpunkt der Ueberschreitung, weshalb keine weitere Instanz gestartet worden ist. Zum Ende des Lastszenarios faellt die Anfragekurve langsam ab und die Anzahl der laufenden Intanzen reduziert sich erneut auf den Anfangswert von 1. \\
 
 \begin{figure}
 	\centering
@@ -479,10 +486,18 @@ Im Folgenden werden die Ergebnisse der in bla vorgestellten Workload-Profile nac
 		\label{fig:sub2}
 	\end{subfigure}
 	\caption{Benchmark: workload-rapid-growth.yaml}
-	\label{fig:test}
-\end{figure}	
-	
-\section{Ausblick}
+	\label{fig:benchmark_04}
+\end{figure}
+
+Zusammenfassend sind die Ergebnisse sehr zufriedenstellend. Es zeigt sich, dass die Autoscaling-Architektur als verteiltes System in allen durchgefuehrten Lastszenarien in der Lage ist, dynamisch auf den Ressourcenbedarf zu reagieren.
+
+\section{Zusammenfassung und Ausblick}
+
+Ziel dieser Arbeit war die Konzeptionierung, Implementierung und Evaluierung einer Autoscaling-Architektur fuer Cloud-Bursting in Hybrid-Clouds, die automatisiert Ressourcen auf Basis von Metriken als Container-as-a-Service bei mehreren CSPs provisionieren und skalieren kann. Hierfuer wurden zwei wichtige Beitraege geliefert. Zum einen eine konkrete Systemarchitektur fuer einen verteilten Autoscaler und zum Anderen eine Evaluation eines Prototypen, welcher durch eine reaktive Skalierungstechnik die den Lebenszyklus von Ressourcen beruecksichtigt, dynamisch auf unterschiedliche Lastszenarien reagieren kann. \\
+
+Es wurde gezeigt, wie sich die automatische Skalierung von Ressourcen fuer on-premise betriebene Services einer zusammenhaengenden Anwendung realisieren laesst, ohne das hierfuer eine Cloud-Infrastruktur betrieben werden muss und wie sich dynamisch provisionierte Ressourcen bei CSP in die eigene Infrastruktur integrieren lassen, ohne das ein hoher Konfigurationsaufwand fuer den Infrastrukturbetrieb ensteht. Die in dieser Arbeit vorgestellte verteilte Autoscaling-Architektur ist offen fuer Erweiterungen, sodass sich weitere Skalierungstechniken implementieren und in einem verteilten Kontext evaluieren lassen. \\
+
+In zukuenftigen Arbeiten soll an der Verbesserung des Prototypen gearbeitet werden. Dafuer sollen weitere Skalierungstechniken evauliert, die Cloudplattformen verschiedener CSPs angebunden und die Architektur mit weiteren anwendungsspezifischen Metriken getestet werden.
 	
 % ---- Bibliography ----
 %
